@@ -20,8 +20,8 @@
 | 16 | Arrive-with-a-plan | ✅ | c8c316f | 2026-07-04 |
 | 17 | Memory: curate + associate | ✅(mocked) | 418d883 | 2026-07-04 |
 | 18 | Ingest protocol: webhook + MCP | ✅ | ce69874 | 2026-07-04 |
-| 19 | Built-in sources: GitHub + RSS | ✅ | | 2026-07-04 |
-| 20 | Onboarding wizard + service install | ⬜ | | |
+| 19 | Built-in sources: GitHub + RSS | ✅ | 366333c | 2026-07-04 |
+| 20 | Onboarding wizard + service install | ✅ | | 2026-07-04 |
 | 21 | Digest polish + nightly distillation | ⬜ | | |
 | 22 | OpenClaw skill | ⬜ | | |
 | 23 | Docs + README | ⬜ | | |

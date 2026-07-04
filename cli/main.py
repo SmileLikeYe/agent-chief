@@ -18,15 +18,27 @@ def demo(fast: bool = typer.Option(False, "--fast", help="Replay without delays 
 
 
 @app.command()
-def init():
+def init(
+    defaults: bool = typer.Option(
+        False, "--defaults", help="Accept all defaults, ask nothing."
+    ),
+):
     """Interactive onboarding wizard (SPEC §4.8)."""
-    typer.echo("chief init: not implemented yet")
+    from cli.init import run_wizard
+
+    run_wizard(defaults_only=defaults)
 
 
 @app.command()
-def run():
+def run(
+    once: bool = typer.Option(False, "--once", hidden=True, help="Assemble, verify, exit."),
+):
     """Resident process: event loop + scheduled jobs (SPEC §2)."""
-    typer.echo("chief run: not implemented yet")
+    import asyncio
+
+    from cli.runtime import run_resident
+
+    asyncio.run(run_resident(once=once))
 
 
 @app.command()
@@ -81,7 +93,9 @@ def report(days: int = typer.Option(7, "--days", help="Reporting window in days.
 @app.command(name="install-service")
 def install_service():
     """Emit launchd/systemd service units."""
-    typer.echo("chief install-service: not implemented yet")
+    from cli.init import install_service as do_install
+
+    do_install()
 
 
 if __name__ == "__main__":

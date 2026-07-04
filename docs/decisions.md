@@ -42,3 +42,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · MCP digest/policy tools are thin v1 wrappers (queue status / file show+append); full digest rendering lands in Step 21.
 - 2026-07-04 · RSS parsed with stdlib ElementTree (RSS 2.0 + Atom, title/link/guid only) — no feedparser dependency.
 - 2026-07-04 · Poller.tick(now) is the testable unit (interval discipline via injected clock); Poller.run wraps it with a 30s wall-clock heartbeat.
+- 2026-07-04 · Resident-process assembly lives in cli/runtime.py; `chief run --once` (hidden) assembles everything and exits — the smoke-testable startup path.
+- 2026-07-04 · Wizard never clobbers an existing POLICY.md/USER.md (manual edits are sacred, Principle 3); config.toml is regenerated on each init.
+- 2026-07-04 · Default judge backend is "fixtures" when no ollama is detected and the user skips key entry — chief stays functional (demo-grade) with zero keys.
