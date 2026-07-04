@@ -1,0 +1,103 @@
+# The Chief Ingest Protocol
+
+How to connect *anything* — an agent, a cron job, a watcher, a webhook — to
+Chief. This document is self-contained: you can build a working source from it
+without reading Chief's code.
+
+Chief does not build pipes. It defines this protocol; your source connects itself.
+
+## The contract in one sentence
+
+You POST a **candidate event**; Chief answers with a **Decision**; you obey it
+(usually by doing nothing — that's the point).
+
+## 1. HTTP webhook
+
+```
+POST http://<chief-host>:8787/v1/events
+Authorization: Bearer <token from ~/.chief/config.toml [ingest].webhook_token>
+Content-Type: application/json
+```
+
+### Request body (candidate event)
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `source` | string | ✅ | who you are, e.g. `"flight-watcher"` |
+| `summary` | string ≤200 chars | ✅ | one line a human could act on |
+| `topic` | string | recommended | hierarchical, e.g. `"travel.flight_change"`; the unit of learning. Omit and Chief infers one |
+| `detail` | string | – | longer context |
+| `suggested_action` | string | – | what the user could do right now (drives actionability) |
+| `evidence` | string[] | – | URLs or local paths backing the claim (drives confidence) |
+| `claimed_urgency` | `"low" \| "medium" \| "high"` | – | advisory only; Chief never trusts it blindly |
+| `expires_at` | ISO datetime | – | when this stops being worth delivering |
+| `dedup_key` | string | – | stable key for repeat sends; defaults to a hash of `summary` |
+
+Minimal working example:
+
+```bash
+curl -X POST http://localhost:8787/v1/events \
+  -H "Authorization: Bearer $CHIEF_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "my-agent",
+    "topic": "dev.ci",
+    "summary": "CI failed on main: test_auth_flow broken by PR #482",
+    "suggested_action": "revert #482 or fix the fixture",
+    "evidence": ["https://github.com/acme/repo/actions/runs/9"],
+    "claimed_urgency": "high"
+  }'
+```
+
+### Response (Decision, HTTP 200)
+
+```json
+{
+  "event_id": "evt_20260706_1040_ab12",
+  "route": "dispatch",
+  "score": 0.87,
+  "components": {"urgency": 0.9, "relevance": 0.9, "actionability": 0.85,
+                  "novelty": 0.8, "confidence": 0.9},
+  "scene": "deep_work",
+  "scene_confidence": 0.75,
+  "cost": 0.0,
+  "matched_rules": [],
+  "reason": "score 0.87 ≥ deep_work threshold 0.85; dispatchable prep work available",
+  "stage": 3,
+  "dispatch_task_id": "task_evt_20260706_1040_ab12"
+}
+```
+
+`route` is final:
+
+| route | what Chief does | what YOU do |
+|---|---|---|
+| `interrupt` | delivers to the user, scene-capped | nothing |
+| `digest` | batches into the next digest | nothing |
+| `dispatch` | runs prep work, verifies, then delivers with a plan | nothing |
+| `curate` | stores a memory for future association | nothing |
+| `drop` | nothing — it was noise | nothing. **Do not retry louder.** |
+
+Errors: `401` bad token · `422` malformed event (fix your payload).
+
+## 2. MCP
+
+Chief exposes an MCP server (`python -m ingest.mcp_server`, stdio) with tools:
+
+- `propose(event) -> Decision` — same contract as the webhook
+- `feedback(event_id, signal)` — report reactions/results: `acted`, `read`,
+  `dismissed_fast`, `muted`, `task_ok`, `task_fail`
+- `digest(now=False)` — digest queue status
+- `policy(action, text?)` — read (`show`) or append (`edit`) POLICY.md
+- `stats(days=7)` — tact-report counters
+
+## 3. Rules of good citizenship
+
+1. **Never send empty reports.** "All clear / nothing new / check complete"
+   gets dropped, and it trains the user to ignore your source.
+2. **One event per fact.** Send bursts and Chief will dedup (24h) and merge
+   near-duplicates (10-min window) anyway.
+3. **`claimed_urgency` is a hint, not a lever.** Inflating it is the fastest
+   way to teach Chief's learner to discount your topic.
+4. **Fill `suggested_action` and `evidence`.** Actionability and verifiable
+   evidence are two of the five scoring dimensions — they are how good events win.
