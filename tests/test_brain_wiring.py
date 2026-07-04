@@ -2,13 +2,10 @@
 decisions (deliver/dispatch), and fold near-duplicates via triage merge."""
 
 import asyncio
-from datetime import UTC, datetime
 
 from core.embedding import HashEmbedder
 from core.state import State
 from tests.helpers import StaticJudge, make_brain
-
-NOW = datetime(2026, 7, 6, 14, 0, tzinfo=UTC)
 
 PAYLOAD = {
     "source": "github-actions",

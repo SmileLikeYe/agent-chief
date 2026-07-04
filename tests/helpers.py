@@ -1,7 +1,13 @@
 """Shared test factories."""
 
+from datetime import UTC, datetime
+
 from core.brain import Brain
 from judge.base import JudgeResult
+
+# Fixed daytime instant so tests never drift into quiet hours (23:00-08:00 UTC)
+# when the suite happens to run at night.
+FIXED_NOW = datetime(2026, 7, 6, 14, 0, tzinfo=UTC)
 
 
 class StaticJudge:
@@ -29,6 +35,7 @@ class StaticJudge:
 
 
 def make_brain(state, tmp_path, judge=None, **kw) -> Brain:
+    kw.setdefault("now_fn", lambda: FIXED_NOW)
     return Brain(
         state,
         judge or StaticJudge(),
