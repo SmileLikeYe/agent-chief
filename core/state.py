@@ -80,6 +80,13 @@ class State:
         data = await self._get_data("SELECT data FROM events WHERE id=?", (event_id,))
         return Event.model_validate_json(data) if data else None
 
+    async def recent_dedup_keys(self, since) -> set[str]:
+        rows = await self._db.execute_fetchall(
+            "SELECT dedup_key FROM events WHERE received_at>=? AND dedup_key IS NOT NULL",
+            (since.isoformat(),),
+        )
+        return {r[0] for r in rows}
+
     # decisions
     async def save_decision(self, d: Decision) -> None:
         await self._put(

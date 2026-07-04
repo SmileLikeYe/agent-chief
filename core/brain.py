@@ -7,16 +7,180 @@ Dispatch timeout 10 min → deliver as-is, never block (SPEC §4.4).
 
 import asyncio
 import logging
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
-from core.schema import Event, Task
-from core.state import State
+from core.policy import load_policy
+from core.schema import Decision, Event, SceneState, Task
+from core.scorer import SimilarityClassifier, score_and_route, stage1
+from core.state import AuditLog, State
 from delivery.base import DeliveryMessage
 from dispatch.acceptance import AskFn, dispatch_and_verify
 from dispatch.executor import Executor
+from judge.base import Judge, JudgeContext
 
 logger = logging.getLogger(__name__)
 
 DISPATCH_TIMEOUT_SECONDS = 600.0  # 10 minutes
+
+
+class Brain:
+    """The triage→associate→decide loop for one incoming event (SPEC §4.2)."""
+
+    def __init__(
+        self,
+        state: State,
+        judge: Judge,
+        *,
+        policy_path,
+        quiet_hours: str = "23:00-08:00",
+        night_whitelist: list[str] | None = None,
+        scene_engine=None,
+        classifier: SimilarityClassifier | None = None,
+        memory=None,
+        inferrer=None,
+        shadow=None,
+        audit: AuditLog | None = None,
+        user_profile: str = "",
+        now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ):
+        self.state = state
+        self.judge = judge
+        self.policy_path = policy_path
+        self.quiet_hours = quiet_hours
+        self.night_whitelist = night_whitelist or ["family", "production_incident"]
+        self.scene_engine = scene_engine
+        self.classifier = classifier
+        self.memory = memory
+        self.inferrer = inferrer
+        self.shadow = shadow
+        self.audit = audit
+        self.user_profile = user_profile
+        self.now_fn = now_fn
+
+    def _scene(self, now: datetime) -> SceneState:
+        if self.scene_engine:
+            return self.scene_engine.current()
+        return SceneState(scene="idle", confidence=0.4, signals={}, at=now)
+
+    async def process(self, payload: dict | Event) -> Decision:
+        from ingest.normalize import normalize
+
+        now = self.now_fn()
+        if isinstance(payload, Event):
+            event = payload
+        else:
+            event = await normalize(payload, inferrer=self.inferrer, now=now)
+
+        policy = load_policy(self.policy_path)
+        scene = self._scene(now)
+        recent_keys = await self.state.recent_dedup_keys(now - timedelta(hours=24))
+
+        hit = stage1(
+            event,
+            now=now,
+            policy=policy,
+            quiet_hours=self.quiet_hours,
+            night_whitelist=self.night_whitelist,
+            recent_dedup_keys=recent_keys,
+        )
+        if hit:
+            decision = Decision(
+                event_id=event.id,
+                route=hit.route,  # type: ignore[arg-type]
+                scene=scene.scene,
+                scene_confidence=scene.confidence,
+                cost=0.0,
+                matched_rules=[hit.rule],
+                reason=hit.reason,
+                stage=1,
+            )
+        else:
+            decision = await self._stage2_or_judge(event, scene, policy, now)
+
+        if self.shadow:
+            route, annotation = await self.shadow.apply(decision, now=now)
+            if annotation:
+                decision = decision.model_copy(
+                    update={"route": route, "reason": f"{decision.reason}; {annotation}"}
+                )
+
+        await self.state.save_event(event)
+        await self.state.save_decision(decision)
+        if self.audit:
+            self.audit.write(
+                {
+                    "at": now.isoformat(),
+                    "event_id": event.id,
+                    "route": decision.route,
+                    "stage": decision.stage,
+                    "score": decision.score,
+                    "scene": decision.scene,
+                    "reason": decision.reason,
+                }
+            )
+        return decision
+
+    async def _stage2_or_judge(
+        self, event: Event, scene: SceneState, policy, now: datetime
+    ) -> Decision:
+        if self.classifier:
+            verdict = self.classifier.classify(event.summary)
+            if verdict.action == "drop":
+                return Decision(
+                    event_id=event.id,
+                    route="drop",
+                    scene=scene.scene,
+                    scene_confidence=scene.confidence,
+                    cost=0.0,
+                    reason=verdict.reason,
+                    stage=2,
+                )
+            if verdict.action == "route":
+                return Decision(
+                    event_id=event.id,
+                    route=verdict.route,  # type: ignore[arg-type]
+                    scene=scene.scene,
+                    scene_confidence=scene.confidence,
+                    cost=0.0,
+                    reason=verdict.reason,
+                    stage=2,
+                )
+
+        memory_hits = []
+        if self.memory:
+            memory_hits = await self.memory.associate(event.summary, now=now)
+
+        context = JudgeContext(
+            user_profile=self.user_profile,
+            associated_memory=[m.text for m in memory_hits],
+            scene=scene.scene,
+            scene_confidence=scene.confidence,
+        )
+        result = await self.judge.judge(event, context)
+        weights = await self.state.get_topic_weights(event.topic)
+        route, score, comps, reason = score_and_route(
+            result,
+            scene,
+            topic_weights=weights,
+            threshold_overrides=policy.scene_thresholds,
+            memory_hit=bool(memory_hits),
+        )
+        if route == "curate" and result.memorize and self.memory:
+            await self.memory.curate(
+                result.memorize, topic=event.topic, origin_event_id=event.id, now=now
+            )
+        return Decision(
+            event_id=event.id,
+            route=route,  # type: ignore[arg-type]
+            score=score,
+            components=comps,
+            scene=scene.scene,
+            scene_confidence=scene.confidence,
+            cost=0.0,
+            reason=reason,
+            stage=3,
+        )
 
 
 async def prepare_delivery(

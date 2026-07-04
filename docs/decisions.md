@@ -38,3 +38,5 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Verification with no verifier configured fails closed ("done is a claim, not a proof").
 - 2026-07-04 · Task status "rejected" = failed verification/attempts exhausted and handed to the human.
 - 2026-07-04 · On dispatch rejection (attempts exhausted), the ask-the-human text is delivered as the message's plan slot — the interrupt itself becomes the escalation.
+- 2026-07-04 · Brain.process assembles the full §4.2 loop (normalize → 24h-dedup → stage1 → stage2 → associate → judge → route → persist+audit); webhook and MCP both call it, so every entry point shares one pipeline.
+- 2026-07-04 · MCP digest/policy tools are thin v1 wrappers (queue status / file show+append); full digest rendering lands in Step 21.

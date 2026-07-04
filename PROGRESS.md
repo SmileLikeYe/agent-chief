@@ -18,8 +18,8 @@
 | 14 | Dispatch executors | ✅ | 1ed3796 | 2026-07-04 |
 | 15 | Dispatch verification | ✅ | ea5cb7c | 2026-07-04 |
 | 16 | Arrive-with-a-plan | ✅ | c8c316f | 2026-07-04 |
-| 17 | Memory: curate + associate | ✅(mocked) | | 2026-07-04 |
-| 18 | Ingest protocol: webhook + MCP | ⬜ | | |
+| 17 | Memory: curate + associate | ✅(mocked) | 418d883 | 2026-07-04 |
+| 18 | Ingest protocol: webhook + MCP | ✅ | | 2026-07-04 |
 | 19 | Built-in sources: GitHub + RSS | ⬜ | | |
 | 20 | Onboarding wizard + service install | ⬜ | | |
 | 21 | Digest polish + nightly distillation | ⬜ | | |
