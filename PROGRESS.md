@@ -9,8 +9,8 @@
 | 5 | Judge interface + fixture backend + routing | ✅ | 5c814c2 | 2026-07-04 |
 | 6 | Demo fixture + replay runner | ✅ | f1da593 | 2026-07-04 |
 | 7 | Demo routing regression (full-table) | ✅ | 064ad9e | 2026-07-04 |
-| 8 | Real LLM judge backends | ✅(mocked) | | 2026-07-04 |
-| 9 | Stage-2 embedding classifier | ⬜ | | |
+| 8 | Real LLM judge backends | ✅(mocked) | c17f42f | 2026-07-04 |
+| 9 | Stage-2 embedding classifier | ✅ | | 2026-07-04 |
 | 10 | Delivery: terminal + desktop | ⬜ | | |
 | 11 | Delivery: Telegram + feedback buttons | ⬜ | | |
 | 12 | Learner: signals, EMA, threshold tuning | ⬜ | | |

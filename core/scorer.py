@@ -107,6 +107,96 @@ def stage1(
     return None
 
 
+# --- stage-2 cheap classifier (SPEC §4.4) ---
+
+STAGE2_THRESHOLD = 0.88
+
+
+@dataclass
+class Stage2Verdict:
+    action: str  # "drop" | "route" | "pass"
+    route: str | None
+    similarity: float
+    reason: str
+
+
+class SimilarityClassifier:
+    """Compares an event against engaged/dismissed historical vectors (ms).
+
+    dismissed-sim > 0.88 with no engaged record → drop;
+    engaged-sim > 0.88 → skip judge, route by historical same-class mean;
+    otherwise → pass through to stage 3.
+    """
+
+    def __init__(self, embedder: Embedder = DEFAULT_EMBEDDER, threshold: float = STAGE2_THRESHOLD):
+        self.embedder = embedder
+        self.threshold = threshold
+        self._engaged: list[tuple[list[float], str]] = []  # (vector, route)
+        self._dismissed: list[list[float]] = []
+
+    def add_engaged(self, text: str, route: str) -> None:
+        self._engaged.append((self.embedder.embed(text), route))
+
+    def add_dismissed(self, text: str) -> None:
+        self._dismissed.append(self.embedder.embed(text))
+
+    def classify(self, text: str) -> Stage2Verdict:
+        vec = self.embedder.embed(text)
+        engaged_hits = [
+            (cosine(vec, evec), route)
+            for evec, route in self._engaged
+            if cosine(vec, evec) > self.threshold
+        ]
+        if engaged_hits:
+            # "route by historical same-class mean": majority route among the
+            # similar engaged records, nearest-first on ties.
+            engaged_hits.sort(reverse=True)
+            routes = [route for _, route in engaged_hits]
+            best = max(set(routes), key=lambda r: (routes.count(r), -routes.index(r)))
+            sim = engaged_hits[0][0]
+            return Stage2Verdict(
+                "route", best, sim, f"engaged-similar {sim:.2f}, historical route {best}"
+            )
+        dismissed_sim = max((cosine(vec, dvec) for dvec in self._dismissed), default=0.0)
+        if dismissed_sim > self.threshold:
+            return Stage2Verdict(
+                "drop", None, dismissed_sim,
+                f"dismissed-similar {dismissed_sim:.2f} with no engaged record",
+            )
+        return Stage2Verdict("pass", None, dismissed_sim, "unfamiliar; ask the judge")
+
+
+# --- triage merge (SPEC §4.2 step 1) ---
+
+MERGE_THRESHOLD = 0.92
+MERGE_WINDOW_MINUTES = 10
+
+
+def find_mergeable(incoming, recent, *, embedder: Embedder = DEFAULT_EMBEDDER):
+    """Return the first recent event with the same topic, embedding cosine > 0.92,
+    and arrival within a 10-minute window — or None."""
+    from datetime import timedelta
+
+    vec = embedder.embed(incoming.summary)
+    for prior in recent:
+        if prior.topic != incoming.topic:
+            continue
+        if abs(incoming.received_at - prior.received_at) > timedelta(
+            minutes=MERGE_WINDOW_MINUTES
+        ):
+            continue
+        if cosine(vec, embedder.embed(prior.summary)) > MERGE_THRESHOLD:
+            return prior
+    return None
+
+
+def merge_events(base, incoming):
+    """Concat summaries and merge evidence (SPEC §4.2); keeps the base id."""
+    summary = f"{base.summary} | {incoming.summary}"[:200]
+    evidence = list(dict.fromkeys([*base.evidence, *incoming.evidence]))
+    return base.model_copy(update={"summary": summary, "evidence": evidence})
+
+
 # --- stage-3 composition & routing (SPEC §4.4) ---
 
 DIMS = ("urgency", "relevance", "actionability", "novelty", "confidence")

@@ -38,4 +38,40 @@ class HashEmbedder:
         return vec
 
 
+class SentenceTransformerEmbedder:
+    """Real local embedding model (SPEC §4.5): bge-small-en-v1.5 by default,
+    bge-m3 for mixed Chinese-English. Requires the `embeddings` extra."""
+
+    _MODEL_ALIASES = {
+        "bge-small-en-v1.5": "BAAI/bge-small-en-v1.5",
+        "bge-m3": "BAAI/bge-m3",
+    }
+
+    def __init__(self, model: str = "bge-small-en-v1.5"):
+        from sentence_transformers import SentenceTransformer
+
+        self._model = SentenceTransformer(self._MODEL_ALIASES.get(model, model))
+
+    def embed(self, text: str) -> list[float]:
+        return self._model.encode(text, normalize_embeddings=True).tolist()
+
+
+def make_embedder(config: dict) -> Embedder:
+    """Config-driven embedder selection; degrades to HashEmbedder with a warning
+    when sentence-transformers (optional `embeddings` extra) is unavailable."""
+    import logging
+
+    name = config.get("embedding_model", "hash")
+    if name == "hash":
+        return HashEmbedder()
+    try:
+        return SentenceTransformerEmbedder(name)
+    except ImportError:
+        logging.getLogger(__name__).warning(
+            "sentence-transformers not installed (uv sync --extra embeddings); "
+            "falling back to hash embeddings"
+        )
+        return HashEmbedder()
+
+
 DEFAULT_EMBEDDER: Embedder = HashEmbedder()
