@@ -114,6 +114,13 @@ class State:
         data = await self._get_data("SELECT data FROM memory WHERE id=?", (memory_id,))
         return MemoryItem.model_validate_json(data) if data else None
 
+    async def list_memory(self) -> list[MemoryItem]:
+        rows = await self._db.execute_fetchall("SELECT data FROM memory")
+        return [MemoryItem.model_validate_json(r[0]) for r in rows]
+
+    async def delete_memory(self, memory_id: str) -> None:
+        await self._put("DELETE FROM memory WHERE id=?", (memory_id,))
+
     # feedback
     async def save_feedback(self, event_id: str, signal: str, at) -> None:
         await self._put(
