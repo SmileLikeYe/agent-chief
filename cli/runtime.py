@@ -77,6 +77,45 @@ def make_channels(delivery_cfg: dict) -> list:
     return channels
 
 
+async def tick_jobs(
+    state: State,
+    memory: MemoryStore,
+    policy_file,
+    channels: list,
+    digest_times: list[str],
+    now: datetime,
+    fired: set,
+) -> None:
+    """One scheduler tick: digest at configured times, distillation+expiry at 03:00."""
+    from datetime import timedelta
+
+    from core.digest import build_digest, distill, render_digest
+    from delivery.base import DeliveryMessage, deliver
+
+    hm, day = f"{now:%H:%M}", f"{now:%Y-%m-%d}"
+    if hm in digest_times and (day, hm) not in fired:
+        fired.add((day, hm))
+        digest = await build_digest(state, memory, since=now - timedelta(hours=24), now=now)
+        msg = DeliveryMessage(
+            summary=render_digest(digest), event_id=f"digest_{day}_{hm}",
+            topic="chief.digest", buttons=False,
+        )
+        await deliver(msg, "desktop", "idle", channels)
+    if hm == "03:00" and (day, "distill") not in fired:
+        fired.add((day, "distill"))
+        await distill(state, policy_file, now=now)
+        await memory.expire(now=now)
+
+
+async def scheduler_loop(state, memory, policy_file, channels, digest_times) -> None:
+    fired: set = set()
+    while True:
+        await tick_jobs(
+            state, memory, policy_file, channels, digest_times, datetime.now(UTC), fired
+        )
+        await asyncio.sleep(30)
+
+
 async def run_resident(once: bool = False) -> None:
     config = load_config()
     if not config:
@@ -116,6 +155,14 @@ async def run_resident(once: bool = False) -> None:
         tasks: list[asyncio.Task] = []
         if not once:
             tasks.extend(await _start_network(brain, state, ingest_cfg, delivery_cfg))
+            tasks.append(
+                asyncio.ensure_future(
+                    scheduler_loop(
+                        state, memory, policy_path(), channels,
+                        config.get("digest", {}).get("times", ["08:00", "18:30"]),
+                    )
+                )
+            )
 
         console.print(
             f"✅ chief is up — judge={llm.get('backend', 'fixtures')} "

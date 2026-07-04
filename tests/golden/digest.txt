@@ -1,0 +1,9 @@
+📰 chief digest — 2026-07-06 18:30
+
+• JavaScript Weekly #712: new bundler benchmarks
+• RSS: XX SDK 2.0 release announcement
+• Competitor Relay ships v3.0
+  ⚡ would have: interrupted you (score 0.88, scene deep_work)  [✓ good call / ✗ should have pinged]
+
+Connections
+  ↳ RSS: XX SDK 2.0 release announcement — remembered: "watch for XX SDK 2.0 release announcement"

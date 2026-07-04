@@ -158,6 +158,16 @@ class State:
         rows = await self._db.execute_fetchall(sql, tuple(params))
         return rows[0][0]
 
+    async def digest_pool(self, since) -> list[tuple[Event, Decision]]:
+        rows = await self._db.execute_fetchall(
+            "SELECT e.data, d.data FROM decisions d JOIN events e ON e.id = d.event_id"
+            " WHERE d.route='digest' AND e.received_at>=? ORDER BY e.received_at",
+            (since.isoformat(),),
+        )
+        return [
+            (Event.model_validate_json(r[0]), Decision.model_validate_json(r[1])) for r in rows
+        ]
+
     async def route_counts(self) -> dict[str, int]:
         rows = await self._db.execute_fetchall(
             "SELECT route, COUNT(*) FROM decisions GROUP BY route"

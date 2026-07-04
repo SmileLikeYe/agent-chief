@@ -48,3 +48,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · review(phase3): Brain now persists a pending Task (dispatch_task_id) when routing to dispatch; an optional fire-and-forget `actor` hook performs delivery/dispatch so every entry point (webhook/MCP/pollers) shares the act-on-decision path.
 - 2026-07-04 · review(phase3): triage merge wired into Brain.process — a same-topic near-duplicate within 10 min folds into the earlier event and inherits its decision.
 - 2026-07-04 · Dispatch executor for judge-flagged tasks defaults to claude_code (configurable); executor choice by propensity is a later refinement.
+- 2026-07-04 · Digest builder/distillation live in core/digest.py; digest window is last-24h (per-send bookmark deferred).
+- 2026-07-04 · Distillation validates the LLM's line against the required format and falls back to a deterministic heuristic line when the LLM is absent or malformed.
+- 2026-07-04 · Scheduler = 30s tick loop with (day, job) dedup set; memory TTL expiry piggybacks on the 03:00 distillation job.

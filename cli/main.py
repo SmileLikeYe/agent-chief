@@ -44,7 +44,26 @@ def run(
 @app.command()
 def digest(now: bool = typer.Option(False, "--now", help="Send the digest immediately.")):
     """Send or schedule the digest."""
-    typer.echo("chief digest: not implemented yet")
+    import asyncio
+    from datetime import UTC, datetime, timedelta
+
+    from core.config import db_path
+    from core.digest import build_digest, render_digest
+    from core.state import State
+    from memory.store import MemoryStore
+
+    async def _digest():
+        async with State.open(db_path()) as state:
+            at = datetime.now(UTC)
+            d = await build_digest(
+                state, MemoryStore(state), since=at - timedelta(hours=24), now=at
+            )
+            return render_digest(d)
+
+    if not now:
+        typer.echo("digest is sent at the configured times by `chief run`; use --now to force")
+        return
+    typer.echo(asyncio.run(_digest()))
 
 
 @app.command()

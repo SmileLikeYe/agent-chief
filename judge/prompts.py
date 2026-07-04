@@ -36,7 +36,7 @@ VERIFY_PROMPT = (
 DISTILL_PROMPT = (
     "Translate today's preference-weight changes into ONE short human-readable policy line "
     "a user would recognize, format exactly:\n"
-    "- {{rule}} (learned {date}, source: {stats})\n"
+    "- {{rule}} (learned {date}, source: {{stats}})\n"
     "Weight changes: {changes}\nOutput the single line only."
 )
 
