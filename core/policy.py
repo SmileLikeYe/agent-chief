@@ -87,3 +87,23 @@ def load_policy(path: str | Path) -> Policy:
     if not path.exists():
         return Policy()
     return parse_policy(path.read_text(encoding="utf-8"))
+
+
+def add_muted_topic(path: str | Path, topic: str) -> None:
+    """Append a topic under '## Muted topics', creating file/section as needed.
+
+    Manual-edit friendly and idempotent; effective immediately (Principle 3).
+    """
+    path = Path(path).expanduser()
+    if load_policy(path).is_muted(topic):
+        return
+    text = path.read_text(encoding="utf-8") if path.exists() else "# POLICY\n"
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip().lower().lstrip("#").strip().startswith("muted") and line.startswith("#"):
+            lines.insert(i + 1, f"- {topic}")
+            break
+    else:
+        lines += ["", "## Muted topics", f"- {topic}"]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")

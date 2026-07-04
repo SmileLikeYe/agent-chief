@@ -114,6 +114,19 @@ class State:
         data = await self._get_data("SELECT data FROM memory WHERE id=?", (memory_id,))
         return MemoryItem.model_validate_json(data) if data else None
 
+    # feedback
+    async def save_feedback(self, event_id: str, signal: str, at) -> None:
+        await self._put(
+            "INSERT INTO feedback (event_id, signal, at) VALUES (?,?,?)",
+            (event_id, signal, at.isoformat()),
+        )
+
+    async def feedback_rows(self) -> list[dict]:
+        rows = await self._db.execute_fetchall(
+            "SELECT event_id, signal, at FROM feedback ORDER BY rowid_"
+        )
+        return [{"event_id": r[0], "signal": r[1], "at": r[2]} for r in rows]
+
     # scene log
     async def log_scene(self, s: SceneState) -> None:
         await self._put(

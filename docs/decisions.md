@@ -24,3 +24,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · sentence-transformers is an optional extra (`uv sync --extra embeddings`) so `uvx chief demo` stays torch-free (<60s wow, Principle 1); make_embedder() degrades to HashEmbedder with a warning.
 - 2026-07-04 · Stage-2 "route by historical same-class mean" = majority route among engaged records above 0.88 similarity, nearest-first tie-break.
 - 2026-07-04 · engaged-similar beats dismissed-similar when both fire (spec: drop only "with no engaged record").
+- 2026-07-04 · Telegram uses the Bot HTTP API directly over httpx (already a dep) instead of python-telegram-bot — no framework needed for sendMessage + getUpdates, and MockTransport makes it fully testable.
+- 2026-07-04 · Button→signal mapping: [Do it]→acted, [Later]→read (weak positive ack), [Mute this kind]→muted.
+- 2026-07-04 · "vibrate" delivery maps to a Telegram silent message (disable_notification=true); true vibrate-only needs a mobile OS hook that v1 doesn't have.
