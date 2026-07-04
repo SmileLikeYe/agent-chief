@@ -2,8 +2,8 @@
 
 | Step | Title | Status | Commit | Date |
 |------|-------|--------|--------|------|
-| 1 | Project scaffold | ✅ | | 2026-07-04 |
-| 2 | Core schemas & storage | ⬜ | | |
+| 1 | Project scaffold | ✅ | 78d07e0 | 2026-07-04 |
+| 2 | Core schemas & storage | ✅ | | 2026-07-04 |
 | 3 | Stage-1 hard rules + POLICY.md parser | ⬜ | | |
 | 4 | Scene engine + inference + policy table | ⬜ | | |
 | 5 | Judge interface + fixture backend + routing | ⬜ | | |
