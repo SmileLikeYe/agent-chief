@@ -40,3 +40,5 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · On dispatch rejection (attempts exhausted), the ask-the-human text is delivered as the message's plan slot — the interrupt itself becomes the escalation.
 - 2026-07-04 · Brain.process assembles the full §4.2 loop (normalize → 24h-dedup → stage1 → stage2 → associate → judge → route → persist+audit); webhook and MCP both call it, so every entry point shares one pipeline.
 - 2026-07-04 · MCP digest/policy tools are thin v1 wrappers (queue status / file show+append); full digest rendering lands in Step 21.
+- 2026-07-04 · RSS parsed with stdlib ElementTree (RSS 2.0 + Atom, title/link/guid only) — no feedparser dependency.
+- 2026-07-04 · Poller.tick(now) is the testable unit (interval discipline via injected clock); Poller.run wraps it with a 30s wall-clock heartbeat.
