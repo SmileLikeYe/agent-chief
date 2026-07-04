@@ -16,8 +16,8 @@
 | 12 | Learner: signals, EMA, threshold tuning | ✅ | 29e716f | 2026-07-04 |
 | 13 | Shadow mode + Tact Report | ✅ | 0dccdbe | 2026-07-04 |
 | 14 | Dispatch executors | ✅ | 1ed3796 | 2026-07-04 |
-| 15 | Dispatch verification | ✅ | | 2026-07-04 |
-| 16 | Arrive-with-a-plan | ⬜ | | |
+| 15 | Dispatch verification | ✅ | ea5cb7c | 2026-07-04 |
+| 16 | Arrive-with-a-plan | ✅ | | 2026-07-04 |
 | 17 | Memory: curate + associate | ⬜ | | |
 | 18 | Ingest protocol: webhook + MCP | ⬜ | | |
 | 19 | Built-in sources: GitHub + RSS | ⬜ | | |
