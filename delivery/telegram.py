@@ -53,6 +53,7 @@ class TelegramChannel:
                     f"{self.api}/bot{self.token}/getUpdates",
                     json={"offset": offset, "timeout": 50, "allowed_updates": ["callback_query"]},
                 )
+                resp.raise_for_status()
                 for update in resp.json().get("result", []):
                     offset = update["update_id"] + 1
                     cq = update.get("callback_query")

@@ -14,7 +14,7 @@
 | 10 | Delivery: terminal + desktop | ✅ | 5be3b40 | 2026-07-04 |
 | 11 | Delivery: Telegram + feedback buttons | ✅(mocked) | 87bb36a | 2026-07-04 |
 | 12 | Learner: signals, EMA, threshold tuning | ✅ | 29e716f | 2026-07-04 |
-| 13 | Shadow mode + Tact Report | ✅ | | 2026-07-04 |
+| 13 | Shadow mode + Tact Report | ✅ | 0dccdbe | 2026-07-04 |
 | 14 | Dispatch executors | ⬜ | | |
 | 15 | Dispatch verification | ⬜ | | |
 | 16 | Arrive-with-a-plan | ⬜ | | |

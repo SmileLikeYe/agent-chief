@@ -131,3 +131,18 @@ def test_threshold_bounds_respected_under_extreme_ratios():
         adjust = tune_adjust(adjust, dismissed_fast_ratio=0.0)
     assert effective_threshold("sleeping", adjust) >= 0.35
     assert effective_threshold("idle", adjust) >= 0.35
+
+
+async def test_rebuild_classifier_from_persisted_history(tmp_path):
+    """review(phase2): stage-2 sets must survive a restart via feedback history."""
+    async with State.open(tmp_path / "s.db") as state:
+        event = ev(topic="dev.ci", summary="CI failed on main branch today")
+        await state.save_event(event)
+        await state.save_decision(decision())
+        learner = Learner(state)
+        await learner.record(event, decision(), "acted", at=NOW)
+
+        fresh = SimilarityClassifier()
+        restarted = Learner(state, classifier=fresh)
+        await restarted.rebuild_classifier()
+        assert fresh.classify("CI failed on main branch today").action == "route"

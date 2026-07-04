@@ -60,6 +60,23 @@ class Learner:
         stored = await self.state.get_topic_weights(f"dispatch::{executor}::{topic}")
         return stored.get("propensity", 0.5) if stored else 0.5
 
+    async def rebuild_classifier(self) -> None:
+        """Reseed the stage-2 engaged/dismissed sets from persisted feedback
+        history (join to events for the summary text). Called at startup."""
+        if not self.classifier:
+            return
+        for row in await self.state.feedback_rows():
+            event = await self.state.load_event(row["event_id"])
+            if not event:
+                continue
+            if row["signal"] in ("acted", "read", "promote"):
+                decision = await self.state.load_decision(event.id)
+                self.classifier.add_engaged(
+                    event.summary, decision.route if decision else "digest"
+                )
+            elif row["signal"] == "dismissed_fast":
+                self.classifier.add_dismissed(event.summary)
+
     async def record(
         self,
         event: Event,
