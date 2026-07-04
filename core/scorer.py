@@ -9,6 +9,7 @@ from datetime import datetime, time
 
 from core.embedding import DEFAULT_EMBEDDER, Embedder, cosine
 from core.policy import Policy
+from core.schema import SceneState
 
 # SPEC §4.4: zero-information template regex
 _ZERO_INFO_RE = re.compile(
@@ -99,3 +100,58 @@ def stage1(
         )
 
     return None
+
+
+# --- stage-3 composition & routing (SPEC §4.4) ---
+
+DIMS = ("urgency", "relevance", "actionability", "novelty", "confidence")
+DEFAULT_WEIGHTS = {dim: 0.2 for dim in DIMS}
+DIGEST_FLOOR = 0.40
+
+
+def score_and_route(
+    result,
+    scene: SceneState,
+    *,
+    topic_weights: dict[str, float] | None = None,
+    scene_cost: float = 0.0,
+    threshold_overrides: dict[str, float] | None = None,
+    memory_hit: bool = False,
+) -> tuple[str, float, dict[str, float], str]:
+    """Compose `score = Σ(w_topic[dim]·comp[dim]) − scene_cost` and route.
+
+    Returns (route, score, components-after-boost, reason).
+    """
+    from context.infer import downgrade_low_confidence, interrupt_threshold
+
+    weights = {**DEFAULT_WEIGHTS, **(topic_weights or {})}
+    comps = {dim: getattr(result, dim) for dim in DIMS}
+    if memory_hit:
+        comps["relevance"] = min(1.0, comps["relevance"] * 1.2)
+
+    score = sum(weights[dim] * comps[dim] for dim in DIMS) - scene_cost
+    threshold = interrupt_threshold(scene.scene, threshold_overrides)
+
+    if score >= threshold:
+        route = "interrupt"
+        reason = f"score {score:.2f} ≥ {scene.scene} threshold {threshold:.2f}"
+    elif score >= DIGEST_FLOOR:
+        route = "digest"
+        reason = f"score {score:.2f} below {scene.scene} threshold {threshold:.2f}"
+    elif result.memorize:
+        route = "curate"
+        reason = f"score {score:.2f} low but worth remembering"
+    else:
+        route = "drop"
+        reason = f"score {score:.2f} with no lasting value"
+
+    route = downgrade_low_confidence(route, scene)
+    if route == "digest" and score >= threshold:
+        reason += f"; downgraded (scene confidence {scene.confidence:.2f} < 0.6)"
+
+    # SPEC §4.4: dispatchable prep work runs first, then delivery ("arrive with a plan")
+    if result.dispatchable and route in ("interrupt", "digest"):
+        route = "dispatch"
+        reason += "; dispatchable prep work available"
+
+    return route, score, comps, reason

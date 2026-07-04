@@ -5,8 +5,8 @@
 | 1 | Project scaffold | ✅ | 78d07e0 | 2026-07-04 |
 | 2 | Core schemas & storage | ✅ | ad0388e | 2026-07-04 |
 | 3 | Stage-1 hard rules + POLICY.md parser | ✅ | 3bf9136 | 2026-07-04 |
-| 4 | Scene engine + inference + policy table | ✅ | | 2026-07-04 |
-| 5 | Judge interface + fixture backend + routing | ⬜ | | |
+| 4 | Scene engine + inference + policy table | ✅ | 256ded0 | 2026-07-04 |
+| 5 | Judge interface + fixture backend + routing | ✅ | | 2026-07-04 |
 | 6 | Demo fixture + replay runner | ⬜ | | |
 | 7 | Demo routing regression (full-table) | ⬜ | | |
 | 8 | Real LLM judge backends | ⬜ | | |
