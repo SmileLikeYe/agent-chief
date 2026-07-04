@@ -34,3 +34,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Shadow start marker persisted in topic_weights under reserved key "__shadow__".
 - 2026-07-04 · Chief home is ~/.chief, overridable via CHIEF_HOME (tests, service units).
 - 2026-07-04 · Shell tasks encode their goal as JSON {"template", "args"}; templates are argv lists with placeholder slots filled as single argv elements (no shell=True anywhere), whitelist is query-only.
+- 2026-07-04 · acceptance_cmd runs via shlex.split + exec (no shell interpretation); it is operator-configured, not agent-generated, so it does not violate the §13 arbitrary-shell ban.
+- 2026-07-04 · Verification with no verifier configured fails closed ("done is a claim, not a proof").
+- 2026-07-04 · Task status "rejected" = failed verification/attempts exhausted and handed to the human.
