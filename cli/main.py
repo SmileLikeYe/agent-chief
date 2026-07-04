@@ -50,7 +50,32 @@ def policy(action: str = typer.Argument("show", help="edit | show")):
 @app.command()
 def report(days: int = typer.Option(7, "--days", help="Reporting window in days.")):
     """Render the Tact Report."""
-    typer.echo("chief report: not implemented yet")
+    import asyncio
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+    from rich.panel import Panel
+
+    from core.config import db_path
+    from core.learner import build_tact_report
+    from core.state import State
+
+    async def _build():
+        async with State.open(db_path()) as state:
+            return await build_tact_report(state, days=days, now=datetime.now(UTC))
+
+    r = asyncio.run(_build())
+    good, total = r.accuracy
+    grade = f"{good}/{total} graded ✓" if total else "no grades yet"
+    Console().print(
+        Panel(
+            f"{r.events_in} events in → {r.blocked} blocked · {r.batched} batched · "
+            f"{r.handled} handled · {r.interrupted} interrupts\n"
+            f"shadow grading: {grade}",
+            title=f"🎯 Tact Report (last {r.days} days)",
+            border_style="green",
+        )
+    )
 
 
 @app.command(name="install-service")

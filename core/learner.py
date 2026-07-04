@@ -1,11 +1,13 @@
-"""Implements SPEC §4.6: feedback signals, EMA weight adaptation, threshold tuning.
+"""Implements SPEC §4.6: feedback signals, EMA weight adaptation, threshold
+tuning, shadow mode, and the Tact Report.
 
 EMA semantics (ADR): positive signals pull the topic's 5-dim weights toward the
 event's component vector; negative signals decay them toward zero. Explainable,
 bounded, no heavy ML (SPEC §13).
 """
 
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from core.schema import Decision, Event
 from core.scorer import DEFAULT_WEIGHTS, DIMS, SimilarityClassifier
@@ -100,3 +102,73 @@ class Learner:
             elif signal == "dismissed_fast":
                 self.classifier.add_dismissed(event.summary)
         # "muted" is handled at the delivery layer (POLICY.md append, Principle 3).
+
+
+# --- shadow mode (SPEC §4.6) ---
+
+
+class ShadowMode:
+    """First 7 days (or until 50 feedback samples): every interrupt degrades
+    into the digest, annotated with the would-have decision."""
+
+    DAYS = 7
+    SAMPLES = 50
+    _KEY = "__shadow__"
+
+    def __init__(self, state: State):
+        self.state = state
+
+    async def ensure_started(self, now: datetime) -> None:
+        if not await self.state.get_topic_weights(self._KEY):
+            await self.state.set_topic_weights(self._KEY, {"started_at": now.isoformat()})
+
+    async def active(self, now: datetime) -> bool:
+        stored = await self.state.get_topic_weights(self._KEY)
+        if not stored:
+            return False
+        started = datetime.fromisoformat(stored["started_at"])
+        if now - started >= timedelta(days=self.DAYS):
+            return False
+        return await self.state.count_feedback() < self.SAMPLES
+
+    async def apply(self, decision: Decision, *, now: datetime) -> tuple[str, str | None]:
+        """Returns (route, digest annotation or None)."""
+        if decision.route == "interrupt" and await self.active(now):
+            annotation = (
+                f"⚡ would have: interrupted you "
+                f"(score {decision.score:.2f}, scene {decision.scene})"
+            )
+            return "digest", annotation
+        return decision.route, None
+
+
+# --- Tact Report (SPEC §4.6/§5) ---
+
+
+@dataclass
+class TactReport:
+    days: int
+    events_in: int
+    blocked: int
+    batched: int
+    handled: int
+    interrupted: int
+    graded: int
+    accuracy: tuple[int, int]  # (good grades, total grades)
+
+
+async def build_tact_report(state: State, *, days: int, now: datetime) -> TactReport:
+    counts = await state.route_counts()
+    since = now - timedelta(days=days)
+    good = await state.count_feedback(signal="shadow_good", since=since)
+    bad = await state.count_feedback(signal="shadow_bad", since=since)
+    return TactReport(
+        days=days,
+        events_in=sum(counts.values()),
+        blocked=counts.get("drop", 0),
+        batched=counts.get("digest", 0),
+        handled=counts.get("dispatch", 0),
+        interrupted=counts.get("interrupt", 0),
+        graded=good + bad,
+        accuracy=(good, good + bad),
+    )

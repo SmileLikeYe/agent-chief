@@ -127,6 +127,23 @@ class State:
         )
         return [{"event_id": r[0], "signal": r[1], "at": r[2]} for r in rows]
 
+    async def count_feedback(self, signal: str | None = None, since=None) -> int:
+        sql, params = "SELECT COUNT(*) FROM feedback WHERE 1=1", []
+        if signal:
+            sql += " AND signal=?"
+            params.append(signal)
+        if since is not None:
+            sql += " AND at>=?"
+            params.append(since.isoformat())
+        rows = await self._db.execute_fetchall(sql, tuple(params))
+        return rows[0][0]
+
+    async def route_counts(self) -> dict[str, int]:
+        rows = await self._db.execute_fetchall(
+            "SELECT route, COUNT(*) FROM decisions GROUP BY route"
+        )
+        return {r[0]: r[1] for r in rows}
+
     # topic weights
     async def get_topic_weights(self, topic: str) -> dict | None:
         data = await self._get_data("SELECT weights FROM topic_weights WHERE topic=?", (topic,))

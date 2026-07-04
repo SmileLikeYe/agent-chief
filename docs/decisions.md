@@ -30,3 +30,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · EMA semantics: positive signals pull topic weights toward the event's component vector, negative signals decay toward zero; per-dim clamp [0.02, 0.5].
 - 2026-07-04 · Global threshold tuning stores a single additive adjustment; effective threshold = clamp(scene threshold + adjust, 0.35, 0.95).
 - 2026-07-04 · Dispatch propensity per (executor, topic) stored in topic_weights under reserved key "dispatch::<executor>::<topic>", EMA α=0.2 toward 1 on task_ok / 0 on task_fail.
+- 2026-07-04 · Shadow ✓/✗ grades recorded as feedback signals shadow_good/shadow_bad; shadow gating counts ALL feedback rows toward the 50-sample graduation.
+- 2026-07-04 · Shadow start marker persisted in topic_weights under reserved key "__shadow__".
+- 2026-07-04 · Chief home is ~/.chief, overridable via CHIEF_HOME (tests, service units).
