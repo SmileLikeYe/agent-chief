@@ -45,3 +45,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Resident-process assembly lives in cli/runtime.py; `chief run --once` (hidden) assembles everything and exits — the smoke-testable startup path.
 - 2026-07-04 · Wizard never clobbers an existing POLICY.md/USER.md (manual edits are sacred, Principle 3); config.toml is regenerated on each init.
 - 2026-07-04 · Default judge backend is "fixtures" when no ollama is detected and the user skips key entry — chief stays functional (demo-grade) with zero keys.
+- 2026-07-04 · review(phase3): Brain now persists a pending Task (dispatch_task_id) when routing to dispatch; an optional fire-and-forget `actor` hook performs delivery/dispatch so every entry point (webhook/MCP/pollers) shares the act-on-decision path.
+- 2026-07-04 · review(phase3): triage merge wired into Brain.process — a same-topic near-duplicate within 10 min folds into the earlier event and inherits its decision.
+- 2026-07-04 · Dispatch executor for judge-flagged tasks defaults to claude_code (configurable); executor choice by propensity is a later refinement.

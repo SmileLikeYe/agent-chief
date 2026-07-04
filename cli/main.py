@@ -50,13 +50,53 @@ def digest(now: bool = typer.Option(False, "--now", help="Send the digest immedi
 @app.command()
 def status():
     """Show scene / queue / today's stats."""
-    typer.echo("chief status: not implemented yet")
+    import asyncio
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+
+    from context.infer import SceneEngine
+    from context.providers.clock import ClockProvider
+    from core.config import db_path
+    from core.learner import ShadowMode
+    from core.state import State
+
+    async def _status():
+        async with State.open(db_path()) as state:
+            scene = SceneEngine([ClockProvider()]).current()
+            counts = await state.route_counts()
+            shadow = await ShadowMode(state).active(datetime.now(UTC))
+            return scene, counts, shadow
+
+    scene, counts, shadow = asyncio.run(_status())
+    console = Console()
+    console.print(f"scene: [bold]{scene.scene}[/bold] (confidence {scene.confidence:.2f})")
+    console.print(f"shadow mode: {'on' if shadow else 'off'}")
+    console.print(
+        "decisions: "
+        + " · ".join(f"{route} {n}" for route, n in sorted(counts.items()))
+        if counts
+        else "decisions: none yet"
+    )
 
 
 @app.command()
 def policy(action: str = typer.Argument("show", help="edit | show")):
     """Show or edit POLICY.md."""
-    typer.echo("chief policy: not implemented yet")
+    import os
+    import subprocess
+
+    from core.config import policy_path
+
+    path = policy_path()
+    if action == "edit":
+        editor = os.environ.get("EDITOR", "nano")
+        subprocess.run([editor, str(path)], check=False)
+        return
+    if path.exists():
+        typer.echo(path.read_text(encoding="utf-8"))
+    else:
+        typer.echo(f"no POLICY.md yet at {path} — run: chief init")
 
 
 @app.command()

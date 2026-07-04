@@ -80,6 +80,12 @@ class State:
         data = await self._get_data("SELECT data FROM events WHERE id=?", (event_id,))
         return Event.model_validate_json(data) if data else None
 
+    async def recent_events(self, since) -> list[Event]:
+        rows = await self._db.execute_fetchall(
+            "SELECT data FROM events WHERE received_at>=?", (since.isoformat(),)
+        )
+        return [Event.model_validate_json(r[0]) for r in rows]
+
     async def recent_dedup_keys(self, since) -> set[str]:
         rows = await self._db.execute_fetchall(
             "SELECT dedup_key FROM events WHERE received_at>=? AND dedup_key IS NOT NULL",

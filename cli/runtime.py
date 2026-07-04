@@ -22,6 +22,61 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
+def make_actor(state: State, config: dict, channels: list):
+    """The delivery/dispatch side of a Decision (SPEC §4.4/§4.5): interrupts are
+    delivered scene-capped; dispatch runs first and arrives with a plan."""
+    from core.brain import prepare_delivery
+    from delivery.base import DeliveryMessage, deliver
+    from dispatch.executor import make_executor
+
+    dispatch_cfg = config.get("dispatch", {})
+
+    async def act(event, decision) -> None:
+        scene = decision.scene
+        if decision.route == "interrupt":
+            msg = DeliveryMessage(summary=event.summary, event_id=event.id, topic=event.topic)
+            await deliver(msg, "ring", scene, channels)
+        elif decision.route == "dispatch":
+            task = (
+                await state.load_task(decision.dispatch_task_id)
+                if decision.dispatch_task_id
+                else None
+            )
+            if task is None or not dispatch_cfg.get("enabled", True):
+                msg = DeliveryMessage(
+                    summary=event.summary, event_id=event.id, topic=event.topic
+                )
+                await deliver(msg, "silent", scene, channels)
+                return
+            executor = make_executor(task.executor, dispatch_cfg)
+            msg, _task = await prepare_delivery(
+                state,
+                event,
+                goal=task.goal,
+                acceptance=task.acceptance,
+                executor=executor,
+            )
+            await deliver(msg, "silent", scene, channels)
+        # digest items wait for the scheduled digest; curate/drop need no action
+
+    return act
+
+
+def make_channels(delivery_cfg: dict) -> list:
+    from delivery.desktop import DesktopChannel
+    from delivery.terminal import TerminalChannel
+
+    channels: list = [TerminalChannel()]
+    if "desktop" in delivery_cfg.get("channels", []):
+        channels.append(DesktopChannel())
+    token = delivery_cfg.get("telegram_token")
+    if token and delivery_cfg.get("chat_id"):
+        from delivery.telegram import TelegramChannel
+
+        channels.append(TelegramChannel(token=token, chat_id=str(delivery_cfg["chat_id"])))
+    return channels
+
+
 async def run_resident(once: bool = False) -> None:
     config = load_config()
     if not config:
@@ -42,6 +97,7 @@ async def run_resident(once: bool = False) -> None:
         learner = Learner(state, classifier=classifier)
         await learner.rebuild_classifier()
 
+        channels = make_channels(delivery_cfg)
         brain = Brain(
             state,
             make_judge(llm),
@@ -53,6 +109,8 @@ async def run_resident(once: bool = False) -> None:
             memory=memory,
             shadow=shadow,
             audit=AuditLog(audit_log_path()),
+            embedder=embedder,
+            actor=make_actor(state, config, channels),
         )
 
         tasks: list[asyncio.Task] = []

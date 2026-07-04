@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 from core.policy import load_policy
 from core.schema import Decision, Event, SceneState, Task
-from core.scorer import SimilarityClassifier, score_and_route, stage1
+from core.scorer import SimilarityClassifier, find_mergeable, merge_events, score_and_route, stage1
 from core.state import AuditLog, State
 from delivery.base import DeliveryMessage
 from dispatch.acceptance import AskFn, dispatch_and_verify
@@ -42,6 +42,9 @@ class Brain:
         shadow=None,
         audit: AuditLog | None = None,
         user_profile: str = "",
+        default_executor: str = "claude_code",
+        embedder=None,
+        actor: Callable | None = None,
         now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
     ):
         self.state = state
@@ -56,6 +59,9 @@ class Brain:
         self.shadow = shadow
         self.audit = audit
         self.user_profile = user_profile
+        self.default_executor = default_executor
+        self.embedder = embedder
+        self.actor = actor  # async (Event, Decision) -> None; delivery/dispatch side
         self.now_fn = now_fn
 
     def _scene(self, now: datetime) -> SceneState:
@@ -75,6 +81,21 @@ class Brain:
         policy = load_policy(self.policy_path)
         scene = self._scene(now)
         recent_keys = await self.state.recent_dedup_keys(now - timedelta(hours=24))
+
+        # Triage merge (SPEC §4.2 step 1): a same-topic near-duplicate within
+        # 10 min folds into the earlier event; the earlier decision stands.
+        if self.embedder:
+            recent = await self.state.recent_events(now - timedelta(minutes=10))
+            prior = find_mergeable(event, [e for e in recent if e.id != event.id],
+                                   embedder=self.embedder)
+            if prior:
+                merged = merge_events(prior, event)
+                await self.state.save_event(merged)
+                existing = await self.state.load_decision(prior.id)
+                if existing:
+                    return existing.model_copy(
+                        update={"reason": existing.reason + "; merged near-duplicate"}
+                    )
 
         hit = stage1(
             event,
@@ -107,6 +128,8 @@ class Brain:
 
         await self.state.save_event(event)
         await self.state.save_decision(decision)
+        if self.actor:
+            asyncio.ensure_future(self._act_safely(event, decision))
         if self.audit:
             self.audit.write(
                 {
@@ -120,6 +143,12 @@ class Brain:
                 }
             )
         return decision
+
+    async def _act_safely(self, event: Event, decision: Decision) -> None:
+        try:
+            await self.actor(event, decision)
+        except Exception:
+            logger.exception("actor failed for %s", event.id)
 
     async def _stage2_or_judge(
         self, event: Event, scene: SceneState, policy, now: datetime
@@ -170,6 +199,19 @@ class Brain:
             await self.memory.curate(
                 result.memorize, topic=event.topic, origin_event_id=event.id, now=now
             )
+
+        task_id = None
+        if route == "dispatch" and result.dispatch_goal:
+            task = Task(
+                id=f"task_{event.id}",
+                origin_event_id=event.id,
+                goal=result.dispatch_goal,
+                executor=self.default_executor,  # type: ignore[arg-type]
+                acceptance=f"Result addresses the goal: {result.dispatch_goal}",
+            )
+            await self.state.save_task(task)
+            task_id = task.id
+
         return Decision(
             event_id=event.id,
             route=route,  # type: ignore[arg-type]
@@ -180,6 +222,7 @@ class Brain:
             cost=0.0,
             reason=reason,
             stage=3,
+            dispatch_task_id=task_id,
         )
 
 
