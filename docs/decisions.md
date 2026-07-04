@@ -14,3 +14,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · scene_cost defaults to 0.0 (scene tolerance already lives in per-scene interrupt thresholds); the cost term stays in the formula and Decision for auditability, configurable later.
 - 2026-07-04 · Default topic weights: 0.2 per dimension (score = mean of the 5 components).
 - 2026-07-04 · dispatchable && route∈{interrupt,digest} sets route="dispatch"; delivery still happens after the task completes (SPEC §4.4 arrive-with-a-plan).
+- 2026-07-04 · Stage-1 drop rules (muted/dedup/zero-info) now run BEFORE the quiet-hours digest rule — §4.7 events 1/24 prove noise must die at night too, not resurface in the morning digest.
+- 2026-07-04 · "Interrupted exactly once" counts interrupt-level deliveries (user decision requested, demo #16); a post-dispatch silent FYI (#9) counts as handled, not an interruption.
+- 2026-07-04 · Demo digest pool flushes at fixture-marked digest moments (morning at #3, evening at #20); items after 18:30 wait for the next digest.

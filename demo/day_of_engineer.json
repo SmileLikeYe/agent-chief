@@ -1,0 +1,380 @@
+{
+  "date": "2026-07-06",
+  "quiet_hours": "23:00-08:00",
+  "night_whitelist": ["family", "production_incident"],
+  "policy": "## Muted topics\n- marketing.*\n",
+  "entries": [
+    {
+      "seq": 1,
+      "time": "07:10",
+      "scene": {"scene": "sleeping", "confidence": 0.9},
+      "event": {
+        "id": "evt_demo_01",
+        "source": "openclaw-heartbeat",
+        "topic": "ops.heartbeat",
+        "summary": "Heartbeat: all clear, nothing to report",
+        "dedup_key": "hb-0710"
+      },
+      "judge": null,
+      "expected_route": "drop",
+      "beat": "opening statement: kill empty reports"
+    },
+    {
+      "seq": 2,
+      "time": "08:05",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_02",
+        "source": "github-notifications",
+        "topic": "dev.dependency",
+        "summary": "Dependabot: bump lodash 4.17.21 -> 4.17.22 in web-app",
+        "dedup_key": "dep-lodash"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.2, "actionability": 0.3, "novelty": 0.2, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "routine patch bump, auto-mergeable, no user value now"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 3,
+      "time": "08:10",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_03",
+        "source": "rss",
+        "topic": "news.newsletter",
+        "summary": "Morning Brew: AI chips, rate cuts, and the week ahead",
+        "dedup_key": "mb-0706"
+      },
+      "judge": {"urgency": 0.2, "relevance": 0.5, "actionability": 0.3, "novelty": 0.6, "confidence": 0.5, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "light industry context, fine to batch into the morning digest"},
+      "expected_route": "digest",
+      "digest_moment": "morning",
+      "beat": "waking-up scene: morning digest goes out"
+    },
+    {
+      "seq": 4,
+      "time": "08:40",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_04",
+        "source": "linkedin-watcher",
+        "topic": "social.linkedin",
+        "summary": "LinkedIn: 3 new connection requests waiting",
+        "dedup_key": "li-0706"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.15, "actionability": 0.1, "novelty": 0.2, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "social inbox noise, zero time sensitivity"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 5,
+      "time": "09:30",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_05",
+        "source": "openclaw-chat",
+        "topic": "user.note",
+        "summary": "User told an agent: remember to check XX's next SDK release",
+        "dedup_key": "note-sdk"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.3, "actionability": 0.1, "novelty": 0.3, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": "watch for XX SDK 2.0 release announcement", "reason": "nothing to do now, but a clear intent worth remembering"},
+      "expected_route": "curate",
+      "beat": "plant the setup"
+    },
+    {
+      "seq": 6,
+      "time": "09:50",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_06",
+        "source": "ci-watcher",
+        "topic": "dev.build",
+        "summary": "Docker nightly build succeeded for api-server",
+        "dedup_key": "build-0706"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.2, "actionability": 0.1, "novelty": 0.1, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "success is the expected state, not news"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 7,
+      "time": "10:05",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_07",
+        "source": "rss",
+        "topic": "news.reddit",
+        "summary": "r/programming trending: the monorepo debate, round 47",
+        "dedup_key": "reddit-mono"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.25, "actionability": 0.1, "novelty": 0.4, "confidence": 0.6, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "recycled debate, no new information"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 8,
+      "time": "10:15",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_08",
+        "source": "rss",
+        "topic": "news.newsletter",
+        "summary": "JavaScript Weekly #712: new bundler benchmarks",
+        "dedup_key": "jsw-712"
+      },
+      "judge": {"urgency": 0.3, "relevance": 0.6, "actionability": 0.4, "novelty": 0.7, "confidence": 0.5, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "relevant reading but user is in deep work; batch it"},
+      "expected_route": "digest",
+      "beat": "scene protection: deep work is sacred"
+    },
+    {
+      "seq": 9,
+      "time": "10:40",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_09",
+        "source": "github-actions",
+        "topic": "dev.ci",
+        "summary": "CI failed on main: test_auth_flow broken by PR #482",
+        "detail": "pytest: test_auth_flow asserts token != None, got None",
+        "claimed_urgency": "high",
+        "dedup_key": "ci-fail-482"
+      },
+      "judge": {"urgency": 0.9, "relevance": 0.9, "actionability": 0.85, "novelty": 0.8, "confidence": 0.9, "dispatchable": true, "dispatch_goal": "diagnose and fix the failing test_auth_flow on main, open a PR", "memorize": null, "reason": "main is red, blocks the whole team, an agent can fix it"},
+      "expected_route": "dispatch",
+      "delivery": "silent",
+      "dispatch": {
+        "executor": "claude_code",
+        "verify": "pass",
+        "result": "Root cause: PR #482 dropped the token fixture. Patch pushed, CI green again. PR #483 awaiting your review."
+      },
+      "beat": "dispatch + verify + arrive with a plan"
+    },
+    {
+      "seq": 10,
+      "time": "11:10",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_10",
+        "source": "ci-watcher",
+        "topic": "dev.ci",
+        "summary": "CI still failing on main: test_auth_flow (repeat notification)",
+        "dedup_key": "ci-fail-482"
+      },
+      "judge": null,
+      "expected_route": "drop",
+      "beat": "dedup: same failure, second messenger"
+    },
+    {
+      "seq": 11,
+      "time": "11:45",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_11",
+        "source": "aws-watcher",
+        "topic": "ops.billing",
+        "summary": "AWS spend up 3% week-over-week, within normal variance",
+        "dedup_key": "aws-0706"
+      },
+      "judge": {"urgency": 0.2, "relevance": 0.4, "actionability": 0.2, "novelty": 0.3, "confidence": 0.5, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "within variance band; alerting on this trains alert blindness"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 12,
+      "time": "12:10",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_12",
+        "source": "calendar",
+        "topic": "calendar.reminder",
+        "summary": "Reminder: daily standup in 15 minutes",
+        "dedup_key": "standup-0706"
+      },
+      "judge": {"urgency": 0.3, "relevance": 0.3, "actionability": 0.2, "novelty": 0.1, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "calendar already notifies; duplicating it is noise"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 13,
+      "time": "12:30",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_13",
+        "source": "rss",
+        "topic": "market.competitor",
+        "summary": "Competitor Relay ships v3.0 with an agent marketplace",
+        "dedup_key": "relay-v3"
+      },
+      "judge": {"urgency": 0.2, "relevance": 0.55, "actionability": 0.25, "novelty": 0.7, "confidence": 0.5, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "strategically interesting, nothing to do this hour"},
+      "expected_route": "digest",
+      "beat": "worth knowing, not worth interrupting"
+    },
+    {
+      "seq": 14,
+      "time": "13:15",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_14",
+        "source": "email-watcher",
+        "topic": "marketing.webinar",
+        "summary": "Webinar invite: Scale your AI workloads (sponsored)",
+        "dedup_key": "webinar-0706"
+      },
+      "judge": null,
+      "expected_route": "drop",
+      "beat": "muted topic: POLICY.md speaks"
+    },
+    {
+      "seq": 15,
+      "time": "13:40",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_15",
+        "source": "rss",
+        "topic": "news.changelog",
+        "summary": "Framework X 2.4 changelog: faster cold starts",
+        "dedup_key": "fwx-24"
+      },
+      "judge": {"urgency": 0.2, "relevance": 0.5, "actionability": 0.4, "novelty": 0.6, "confidence": 0.4, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "useful upgrade notes, digest material"},
+      "expected_route": "digest"
+    },
+    {
+      "seq": 16,
+      "time": "14:00",
+      "scene": {"scene": "meeting", "confidence": 0.85},
+      "event": {
+        "id": "evt_demo_16",
+        "source": "flight-watcher",
+        "topic": "travel.flight_change",
+        "summary": "Flight CA1857 tonight delayed 2.5h, departure now 21:40",
+        "claimed_urgency": "high",
+        "dedup_key": "ca1857-delay"
+      },
+      "judge": {"urgency": 0.95, "relevance": 0.95, "actionability": 0.9, "novelty": 0.9, "confidence": 0.95, "dispatchable": true, "dispatch_goal": "find rebooking alternatives for tonight", "memorize": null, "reason": "time-critical, decisions decay by the hour, prep work possible"},
+      "expected_route": "dispatch",
+      "delivery": "interrupt",
+      "dispatch": {
+        "executor": "openclaw",
+        "verify": "pass",
+        "result": "3 options: (1) keep CA1857 at 21:40; (2) MU5137 at 19:05, +$60; (3) HU7604 at 18:30, window seat. Recommend (2)."
+      },
+      "beat": "two-axis decision + arrive with a plan: silent push in a meeting"
+    },
+    {
+      "seq": 17,
+      "time": "15:10",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_17",
+        "source": "twitter-watcher",
+        "topic": "social.twitter",
+        "summary": "X: 5 new followers this week",
+        "dedup_key": "tw-0706"
+      },
+      "judge": {"urgency": 0.05, "relevance": 0.1, "actionability": 0.05, "novelty": 0.2, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "vanity metric, no action, no decay"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 18,
+      "time": "15:45",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_18",
+        "source": "github-notifications",
+        "topic": "dev.dependency",
+        "summary": "Dependabot: bump pytest 8.2 -> 8.3 in agent-chief",
+        "dedup_key": "dep-pytest"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.2, "actionability": 0.25, "novelty": 0.2, "confidence": 0.9, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "routine minor bump during deep work"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 19,
+      "time": "16:20",
+      "scene": {"scene": "deep_work", "confidence": 0.75},
+      "event": {
+        "id": "evt_demo_19",
+        "source": "rss",
+        "topic": "dev.sdk_release",
+        "summary": "RSS: XX SDK 2.0 release announcement",
+        "detail": "Breaking auth changes, new streaming API, migration guide published",
+        "dedup_key": "xx-sdk-20"
+      },
+      "judge": {"urgency": 0.4, "relevance": 0.6, "actionability": 0.5, "novelty": 0.7, "confidence": 0.8, "dispatchable": true, "dispatch_goal": "summarize what changed in XX SDK 2.0 and what it means for our integration", "memorize": null, "reason": "matches a remembered intent; prep a summary for the evening digest"},
+      "expected_route": "dispatch",
+      "delivery": "digest",
+      "dispatch": {
+        "executor": "claude_code",
+        "verify": "pass",
+        "result": "Summary ready: auth is now token-per-session (breaking for us), streaming API replaces polling. Migration ~1 day."
+      },
+      "beat": "payoff: association hits the memory planted at #5"
+    },
+    {
+      "seq": 20,
+      "time": "17:30",
+      "scene": {"scene": "idle", "confidence": 0.4},
+      "event": {
+        "id": "evt_demo_20",
+        "source": "rss",
+        "topic": "news.blog",
+        "summary": "Trending post: Postgres 18 performance tips",
+        "dedup_key": "pg18-tips"
+      },
+      "judge": {"urgency": 0.2, "relevance": 0.5, "actionability": 0.4, "novelty": 0.6, "confidence": 0.4, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "good weekend reading, not urgent"},
+      "expected_route": "digest",
+      "digest_moment": "evening"
+    },
+    {
+      "seq": 21,
+      "time": "19:00",
+      "scene": {"scene": "leisure", "confidence": 0.6},
+      "event": {
+        "id": "evt_demo_21",
+        "source": "openclaw-heartbeat",
+        "topic": "ops.heartbeat",
+        "summary": "Evening check: all good, nothing new",
+        "dedup_key": "hb-1900"
+      },
+      "judge": null,
+      "expected_route": "drop",
+      "beat": "callback: empty reports die here too"
+    },
+    {
+      "seq": 22,
+      "time": "20:15",
+      "scene": {"scene": "leisure", "confidence": 0.6},
+      "event": {
+        "id": "evt_demo_22",
+        "source": "meetup-watcher",
+        "topic": "community.meetup",
+        "summary": "Reminder: AI builders meetup tomorrow 19:00, 2 friends going",
+        "dedup_key": "meetup-0707"
+      },
+      "judge": {"urgency": 0.3, "relevance": 0.5, "actionability": 0.55, "novelty": 0.4, "confidence": 0.5, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "tomorrow's plan, tonight's digest is soon enough"},
+      "expected_route": "digest"
+    },
+    {
+      "seq": 23,
+      "time": "21:30",
+      "scene": {"scene": "leisure", "confidence": 0.6},
+      "event": {
+        "id": "evt_demo_23",
+        "source": "youtube-watcher",
+        "topic": "social.youtube",
+        "summary": "New video from a channel you follow: 'I rewrote it in Rust'",
+        "dedup_key": "yt-0706"
+      },
+      "judge": {"urgency": 0.1, "relevance": 0.3, "actionability": 0.1, "novelty": 0.3, "confidence": 0.7, "dispatchable": false, "dispatch_goal": null, "memorize": null, "reason": "entertainment can wait for the user to find it"},
+      "expected_route": "drop"
+    },
+    {
+      "seq": 24,
+      "time": "23:30",
+      "scene": {"scene": "sleeping", "confidence": 0.9},
+      "event": {
+        "id": "evt_demo_24",
+        "source": "email-watcher",
+        "topic": "marketing.email",
+        "summary": "Last chance: 50% off annual plan ends at midnight",
+        "dedup_key": "promo-0706"
+      },
+      "judge": null,
+      "expected_route": "drop",
+      "beat": "closing: the night stays quiet"
+    }
+  ]
+}

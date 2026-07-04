@@ -12,7 +12,9 @@ app = typer.Typer(
 @app.command()
 def demo(fast: bool = typer.Option(False, "--fast", help="Replay without delays (for tests).")):
     """Offline replay of a day in the life of an engineer (SPEC §4.7)."""
-    typer.echo("chief demo: not implemented yet")
+    from demo.runner import run_demo
+
+    run_demo(fast=fast)
 
 
 @app.command()

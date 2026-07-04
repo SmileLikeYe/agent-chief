@@ -21,9 +21,11 @@ _EMPTY_REPORTS = [
     "All clear, nothing to report.",
     "Everything is all normal.",
     "Heartbeat: everything all normal.",
+    "Heartbeat: all clear, nothing to report.",
     "Heartbeat check complete, all good.",
     "Nothing new to report, all systems normal.",
     "Nightly check complete, everything all good.",
+    "Evening check: all good, nothing new.",
 ]
 _ZERO_INFO_SIM_THRESHOLD = 0.85
 
@@ -79,11 +81,8 @@ def stage1(
     """Stage-1 hard rules (SPEC §4.4). Returns a forced route, or None to continue."""
     night_whitelist = night_whitelist or []
 
-    if in_quiet_hours(now, quiet_hours) and not _topic_in_whitelist(
-        event.topic, night_whitelist
-    ):
-        return RuleHit("digest", "quiet_hours", f"quiet hours {quiet_hours}, topic not whitelisted")
-
+    # Drop rules run before the quiet-hours digest rule: noise must die even at
+    # night, or it would resurface in the morning digest (see §4.7 events 1/24).
     if policy.is_muted(event.topic):
         return RuleHit("drop", "muted_topic", f"topic {event.topic} muted in POLICY.md")
 
@@ -92,6 +91,11 @@ def stage1(
 
     if is_zero_information(event.summary, embedder):
         return RuleHit("drop", "zero_information", "zero-information template (empty report)")
+
+    if in_quiet_hours(now, quiet_hours) and not _topic_in_whitelist(
+        event.topic, night_whitelist
+    ):
+        return RuleHit("digest", "quiet_hours", f"quiet hours {quiet_hours}, topic not whitelisted")
 
     rule = policy.route_for(event.topic)
     if rule:
