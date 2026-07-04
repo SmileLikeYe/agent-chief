@@ -33,3 +33,4 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Shadow ✓/✗ grades recorded as feedback signals shadow_good/shadow_bad; shadow gating counts ALL feedback rows toward the 50-sample graduation.
 - 2026-07-04 · Shadow start marker persisted in topic_weights under reserved key "__shadow__".
 - 2026-07-04 · Chief home is ~/.chief, overridable via CHIEF_HOME (tests, service units).
+- 2026-07-04 · Shell tasks encode their goal as JSON {"template", "args"}; templates are argv lists with placeholder slots filled as single argv elements (no shell=True anywhere), whitelist is query-only.

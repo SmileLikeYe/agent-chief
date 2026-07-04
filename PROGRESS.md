@@ -15,7 +15,7 @@
 | 11 | Delivery: Telegram + feedback buttons | ✅(mocked) | 87bb36a | 2026-07-04 |
 | 12 | Learner: signals, EMA, threshold tuning | ✅ | 29e716f | 2026-07-04 |
 | 13 | Shadow mode + Tact Report | ✅ | 0dccdbe | 2026-07-04 |
-| 14 | Dispatch executors | ⬜ | | |
+| 14 | Dispatch executors | ✅ | | 2026-07-04 |
 | 15 | Dispatch verification | ⬜ | | |
 | 16 | Arrive-with-a-plan | ⬜ | | |
 | 17 | Memory: curate + associate | ⬜ | | |
