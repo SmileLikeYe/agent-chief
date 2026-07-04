@@ -1,0 +1,28 @@
+# Progress
+
+| Step | Title | Status | Commit | Date |
+|------|-------|--------|--------|------|
+| 1 | Project scaffold | ✅ | | 2026-07-04 |
+| 2 | Core schemas & storage | ⬜ | | |
+| 3 | Stage-1 hard rules + POLICY.md parser | ⬜ | | |
+| 4 | Scene engine + inference + policy table | ⬜ | | |
+| 5 | Judge interface + fixture backend + routing | ⬜ | | |
+| 6 | Demo fixture + replay runner | ⬜ | | |
+| 7 | Demo routing regression (full-table) | ⬜ | | |
+| 8 | Real LLM judge backends | ⬜ | | |
+| 9 | Stage-2 embedding classifier | ⬜ | | |
+| 10 | Delivery: terminal + desktop | ⬜ | | |
+| 11 | Delivery: Telegram + feedback buttons | ⬜ | | |
+| 12 | Learner: signals, EMA, threshold tuning | ⬜ | | |
+| 13 | Shadow mode + Tact Report | ⬜ | | |
+| 14 | Dispatch executors | ⬜ | | |
+| 15 | Dispatch verification | ⬜ | | |
+| 16 | Arrive-with-a-plan | ⬜ | | |
+| 17 | Memory: curate + associate | ⬜ | | |
+| 18 | Ingest protocol: webhook + MCP | ⬜ | | |
+| 19 | Built-in sources: GitHub + RSS | ⬜ | | |
+| 20 | Onboarding wizard + service install | ⬜ | | |
+| 21 | Digest polish + nightly distillation | ⬜ | | |
+| 22 | OpenClaw skill | ⬜ | | |
+| 23 | Docs + README | ⬜ | | |
+| 24 | Release assets | ⬜ | | |
