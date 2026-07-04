@@ -51,3 +51,4 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Digest builder/distillation live in core/digest.py; digest window is last-24h (per-send bookmark deferred).
 - 2026-07-04 · Distillation validates the LLM's line against the required format and falls back to a deterministic heuristic line when the LLM is absent or malformed.
 - 2026-07-04 · Scheduler = 30s tick loop with (day, job) dedup set; memory TTL expiry piggybacks on the 03:00 distillation job.
+- 2026-07-04 · OpenClaw integration speaks plain JSON files under ~/.openclaw (tasks/ inbox for injection, outbox/ for delivery callback) — no OpenClaw API dependency, symmetric and inspectable.
