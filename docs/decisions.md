@@ -27,3 +27,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Telegram uses the Bot HTTP API directly over httpx (already a dep) instead of python-telegram-bot — no framework needed for sendMessage + getUpdates, and MockTransport makes it fully testable.
 - 2026-07-04 · Button→signal mapping: [Do it]→acted, [Later]→read (weak positive ack), [Mute this kind]→muted.
 - 2026-07-04 · "vibrate" delivery maps to a Telegram silent message (disable_notification=true); true vibrate-only needs a mobile OS hook that v1 doesn't have.
+- 2026-07-04 · EMA semantics: positive signals pull topic weights toward the event's component vector, negative signals decay toward zero; per-dim clamp [0.02, 0.5].
+- 2026-07-04 · Global threshold tuning stores a single additive adjustment; effective threshold = clamp(scene threshold + adjust, 0.35, 0.95).
+- 2026-07-04 · Dispatch propensity per (executor, topic) stored in topic_weights under reserved key "dispatch::<executor>::<topic>", EMA α=0.2 toward 1 on task_ok / 0 on task_fail.

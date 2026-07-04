@@ -127,6 +127,17 @@ class State:
         )
         return [{"event_id": r[0], "signal": r[1], "at": r[2]} for r in rows]
 
+    # topic weights
+    async def get_topic_weights(self, topic: str) -> dict | None:
+        data = await self._get_data("SELECT weights FROM topic_weights WHERE topic=?", (topic,))
+        return json.loads(data) if data else None
+
+    async def set_topic_weights(self, topic: str, weights: dict) -> None:
+        await self._put(
+            "INSERT OR REPLACE INTO topic_weights (topic, weights) VALUES (?,?)",
+            (topic, json.dumps(weights)),
+        )
+
     # scene log
     async def log_scene(self, s: SceneState) -> None:
         await self._put(
