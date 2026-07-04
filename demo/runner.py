@@ -81,11 +81,12 @@ def load_fixture(path: str | Path = FIXTURE_PATH) -> Fixture:
     )
 
 
-def replay(fixture: Fixture) -> list[ReplayResult]:
+def replay(fixture: Fixture, judge=None) -> list[ReplayResult]:
     """Run every fixture event through the real pipeline (stage 1 → associate →
-    fixture judge → score & route). Fully offline and deterministic."""
+    judge → score & route). Offline and deterministic with the default
+    FixtureJudge; Step 8 injects real backends for the agreement test."""
     policy = parse_policy(fixture.policy_text)
-    judge = FixtureJudge({e.event["id"]: e.judge for e in fixture.entries if e.judge})
+    judge = judge or FixtureJudge({e.event["id"]: e.judge for e in fixture.entries if e.judge})
     memory: list[tuple[str, list[float]]] = []  # (text, embedding)
     seen_dedup: set[str] = set()
     results: list[ReplayResult] = []

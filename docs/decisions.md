@@ -19,3 +19,5 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Demo digest pool flushes at fixture-marked digest moments (morning at #3, evening at #20); items after 18:30 wait for the next digest.
 - 2026-07-04 · §12 name check: agent-chief, chiefd, cortexd all free on PyPI (404); kept `agent-chief` to match the existing repo/remote.
 - 2026-07-04 · review(phase1): demo anchor #3 moved to 08:00 exactly; morning digest now carries 4 overnight items; event #2 rewritten as a pre-8am zero-info drop to keep the timeline monotonic.
+- 2026-07-04 · Judge prompt sent as system+system+user messages (stable system / daily context / per-call user) to maximize provider prompt caching; DeepSeek adapter subclasses the OpenAI adapter (API-compatible).
+- 2026-07-04 · Judge backend factory lives in judge/factory.py; "fixtures" is a selectable backend so the demo path needs no special-casing.

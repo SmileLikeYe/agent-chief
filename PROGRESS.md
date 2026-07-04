@@ -8,8 +8,8 @@
 | 4 | Scene engine + inference + policy table | ✅ | 256ded0 | 2026-07-04 |
 | 5 | Judge interface + fixture backend + routing | ✅ | 5c814c2 | 2026-07-04 |
 | 6 | Demo fixture + replay runner | ✅ | f1da593 | 2026-07-04 |
-| 7 | Demo routing regression (full-table) | ✅ | | 2026-07-04 |
-| 8 | Real LLM judge backends | ⬜ | | |
+| 7 | Demo routing regression (full-table) | ✅ | 064ad9e | 2026-07-04 |
+| 8 | Real LLM judge backends | ✅(mocked) | | 2026-07-04 |
 | 9 | Stage-2 embedding classifier | ⬜ | | |
 | 10 | Delivery: terminal + desktop | ⬜ | | |
 | 11 | Delivery: Telegram + feedback buttons | ⬜ | | |

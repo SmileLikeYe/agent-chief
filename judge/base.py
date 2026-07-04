@@ -37,3 +37,70 @@ class Judge(Protocol):
     name: str
 
     async def judge(self, event: Event, context: JudgeContext | None) -> JudgeResult: ...
+
+
+class JudgeError(RuntimeError):
+    """The backend could not produce a valid JudgeResult (after retries)."""
+
+
+def extract_json(text: str) -> str:
+    """Strip markdown code fences and surrounding chatter around a JSON object."""
+    text = text.strip()
+    if "```" in text:
+        inner = text.split("```", 2)[1]
+        text = inner.removeprefix("json").strip()
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError(f"no JSON object in judge output: {text[:80]!r}")
+    return text[start : end + 1]
+
+
+class HTTPJudge:
+    """Shared skeleton for HTTP judge backends: prompt assembly, JSON-mode
+    parsing, one retry on malformed output (SPEC §9 Step 8)."""
+
+    name = "http"
+    MAX_ATTEMPTS = 2
+
+    def __init__(
+        self,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        transport=None,
+        timeout: float = 60.0,
+    ):
+        self.model = model
+        self.api_key = api_key
+        if base_url:
+            self.base_url = base_url
+        self._transport = transport
+        self.timeout = timeout
+
+    def _client(self):
+        import httpx
+
+        return httpx.AsyncClient(transport=self._transport, timeout=self.timeout)
+
+    async def _complete(self, client, messages: list[dict], retry: bool) -> str:
+        raise NotImplementedError
+
+    async def judge(self, event: Event, context: JudgeContext | None) -> JudgeResult:
+        from judge import prompts
+
+        ctx = context or JudgeContext()
+        messages = [
+            {"role": "system", "content": prompts.SYSTEM_PROMPT},
+            {"role": "system", "content": prompts.context_block(ctx)},
+            {"role": "user", "content": prompts.user_block(event, ctx)},
+        ]
+        last_error: Exception | None = None
+        async with self._client() as client:
+            for attempt in range(self.MAX_ATTEMPTS):
+                raw = await self._complete(client, messages, retry=attempt > 0)
+                try:
+                    return JudgeResult.model_validate_json(extract_json(raw))
+                except Exception as exc:
+                    last_error = exc
+                    messages = [*messages, {"role": "user", "content": prompts.RETRY_PROMPT}]
+        raise JudgeError(f"{self.name}: malformed judge output after retries") from last_error
