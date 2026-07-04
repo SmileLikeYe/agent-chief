@@ -17,3 +17,5 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Stage-1 drop rules (muted/dedup/zero-info) now run BEFORE the quiet-hours digest rule — §4.7 events 1/24 prove noise must die at night too, not resurface in the morning digest.
 - 2026-07-04 · "Interrupted exactly once" counts interrupt-level deliveries (user decision requested, demo #16); a post-dispatch silent FYI (#9) counts as handled, not an interruption.
 - 2026-07-04 · Demo digest pool flushes at fixture-marked digest moments (morning at #3, evening at #20); items after 18:30 wait for the next digest.
+- 2026-07-04 · §12 name check: agent-chief, chiefd, cortexd all free on PyPI (404); kept `agent-chief` to match the existing repo/remote.
+- 2026-07-04 · review(phase1): demo anchor #3 moved to 08:00 exactly; morning digest now carries 4 overnight items; event #2 rewritten as a pre-8am zero-info drop to keep the timeline monotonic.

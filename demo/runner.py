@@ -54,6 +54,7 @@ class Fixture:
     night_whitelist: list[str]
     policy_text: str
     entries: list[ReplayEntry]
+    overnight: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -76,6 +77,7 @@ def load_fixture(path: str | Path = FIXTURE_PATH) -> Fixture:
         night_whitelist=raw["night_whitelist"],
         policy_text=raw["policy"],
         entries=[ReplayEntry(**e) for e in raw["entries"]],
+        overnight=raw.get("overnight", []),
     )
 
 
@@ -158,8 +160,11 @@ def replay(fixture: Fixture) -> list[ReplayResult]:
     return results
 
 
-def _render_digest(console: Console, title: str, pool: list[ReplayResult]) -> None:
-    lines = [f"• {r.event.summary}" for r in pool]
+def _render_digest(
+    console: Console, title: str, pool: list[ReplayResult], overnight: list[str] | None = None
+) -> None:
+    lines = [f"• {item} [dim](overnight)[/dim]" for item in overnight or []]
+    lines += [f"• {r.event.summary}" for r in pool]
     connections = [r for r in pool if r.memory_hits]
     if connections:
         lines.append("")
@@ -210,7 +215,7 @@ def run_demo(fast: bool = False) -> None:
             digest_pool.append(r)
 
         if r.entry.digest_moment == "morning":
-            _render_digest(console, "morning digest (08:00)", digest_pool)
+            _render_digest(console, "morning digest (08:00)", digest_pool, fixture.overnight)
             digest_pool = []
         elif r.entry.digest_moment == "evening":
             _render_digest(console, "evening digest (18:30)", digest_pool)

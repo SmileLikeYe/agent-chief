@@ -25,6 +25,7 @@ _EMPTY_REPORTS = [
     "Heartbeat check complete, all good.",
     "Nothing new to report, all systems normal.",
     "Nightly check complete, everything all good.",
+    "Nightly backup check complete, all good.",
     "Evening check: all good, nothing new.",
 ]
 _ZERO_INFO_SIM_THRESHOLD = 0.85
