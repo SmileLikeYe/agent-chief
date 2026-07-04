@@ -7,8 +7,8 @@
 | 3 | Stage-1 hard rules + POLICY.md parser | ✅ | 3bf9136 | 2026-07-04 |
 | 4 | Scene engine + inference + policy table | ✅ | 256ded0 | 2026-07-04 |
 | 5 | Judge interface + fixture backend + routing | ✅ | 5c814c2 | 2026-07-04 |
-| 6 | Demo fixture + replay runner | ✅ | | 2026-07-04 |
-| 7 | Demo routing regression (full-table) | ⬜ | | |
+| 6 | Demo fixture + replay runner | ✅ | f1da593 | 2026-07-04 |
+| 7 | Demo routing regression (full-table) | ✅ | | 2026-07-04 |
 | 8 | Real LLM judge backends | ⬜ | | |
 | 9 | Stage-2 embedding classifier | ⬜ | | |
 | 10 | Delivery: terminal + desktop | ⬜ | | |
