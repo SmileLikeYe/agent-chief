@@ -13,13 +13,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import get_args
 
-from core.schema import Route
+from core.schema import Route, Scene
 
 logger = logging.getLogger(__name__)
 
 _RULE_RE = re.compile(r"^-\s*(?P<pattern>\S+)\s*(?:->|→)\s*(?P<route>\w+)\s*$")
 _ITEM_RE = re.compile(r"^-\s*(?P<topic>\S+)\s*$")
+_THRESHOLD_RE = re.compile(r"^-\s*(?P<scene>\w+)\s*=\s*(?P<value>[\d.]+)\s*$")
 _ROUTES = set(get_args(Route))
+_SCENES = set(get_args(Scene))
 
 
 @dataclass
@@ -70,6 +72,12 @@ def parse_policy(text: str) -> Policy:
                 policy.rules.append(PolicyRule(m.group("pattern"), m.group("route")))
             else:
                 logger.warning("POLICY.md: ignoring unparseable rule line: %r", stripped)
+        elif section.startswith("scene"):
+            m = _THRESHOLD_RE.match(stripped)
+            if m and m.group("scene") in _SCENES:
+                policy.scene_thresholds[m.group("scene")] = float(m.group("value"))
+            else:
+                logger.warning("POLICY.md: ignoring unparseable threshold line: %r", stripped)
         # "learned" section is prose for humans; never parsed.
     return policy
 

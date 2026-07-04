@@ -8,3 +8,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Embeddings are pluggable (`core/embedding.py` Protocol); default is a dependency-free hashed bag-of-words vectorizer, real sentence-transformers model wired at Step 9.
 - 2026-07-04 · POLICY parser lives in `core/policy.py` (the `policy/` dir holds only user-facing templates per §6).
 - 2026-07-04 · Stage-1 rules evaluated in exact SPEC order: quiet hours → muted → dedup → zero-info → policy rules.
+- 2026-07-04 · Delivery levels ordered terminal < desktop < silent < vibrate < ring; policy-table "silent push"=silent, "ring"=ring.
+- 2026-07-04 · Calendar provider uses a minimal built-in ICS parser (DTSTART/DTEND/SUMMARY); no gcal API in v1 core.
+- 2026-07-04 · Scene-threshold overrides live under a "## Scene thresholds" POLICY.md section, `- <scene> = <float>`.
