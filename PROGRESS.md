@@ -24,5 +24,5 @@
 | 20 | Onboarding wizard + service install | ✅ | 44da161 | 2026-07-04 |
 | 21 | Digest polish + nightly distillation | ✅ | 6000119 | 2026-07-04 |
 | 22 | OpenClaw skill | ✅(mocked) | 641a140 | 2026-07-04 |
-| 23 | Docs + README | ✅ | | 2026-07-04 |
-| 24 | Release assets | ⬜ | | |
+| 23 | Docs + README | ✅ | 8cafd6d | 2026-07-04 |
+| 24 | Release assets | ✅(mocked) | | 2026-07-04 |
