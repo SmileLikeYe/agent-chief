@@ -188,11 +188,14 @@ class Brain:
         )
         result = await self.judge.judge(event, context)
         weights = await self.state.get_topic_weights(event.topic)
+        from core.learner import load_threshold_adjust
+
         route, score, comps, reason = score_and_route(
             result,
             scene,
             topic_weights=weights,
             threshold_overrides=policy.scene_thresholds,
+            threshold_adjust=await load_threshold_adjust(self.state),
             memory_hit=bool(memory_hits),
         )
         if route == "curate" and result.memorize and self.memory:

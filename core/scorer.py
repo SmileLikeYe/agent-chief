@@ -211,6 +211,7 @@ def score_and_route(
     topic_weights: dict[str, float] | None = None,
     scene_cost: float = 0.0,
     threshold_overrides: dict[str, float] | None = None,
+    threshold_adjust: float = 0.0,
     memory_hit: bool = False,
 ) -> tuple[str, float, dict[str, float], str]:
     """Compose `score = Σ(w_topic[dim]·comp[dim]) − scene_cost` and route.
@@ -226,6 +227,9 @@ def score_and_route(
 
     score = sum(weights[dim] * comps[dim] for dim in DIMS) - scene_cost
     threshold = interrupt_threshold(scene.scene, threshold_overrides)
+    if threshold_adjust:
+        # learned global adjustment, clamped (SPEC §4.6 bounds [0.35, 0.95])
+        threshold = min(0.95, max(0.35, threshold + threshold_adjust))
 
     if score >= threshold:
         route = "interrupt"

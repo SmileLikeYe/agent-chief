@@ -121,6 +121,27 @@ class Learner:
         # "muted" is handled at the delivery layer (POLICY.md append, Principle 3).
 
 
+THRESHOLD_KEY = "__threshold_adjust__"
+
+
+async def load_threshold_adjust(state: State) -> float:
+    stored = await state.get_topic_weights(THRESHOLD_KEY)
+    return stored.get("adjust", 0.0) if stored else 0.0
+
+
+async def daily_threshold_tuning(state: State, *, now: datetime) -> float:
+    """SPEC §4.6: 7-day interrupt dismissed_fast ratio >40% → +0.02/day,
+    <15% → −0.01/day. Persists and returns the new global adjustment."""
+    since = now - timedelta(days=7)
+    interrupts = (await state.route_counts()).get("interrupt", 0)
+    dismissed = await state.count_feedback(signal="dismissed_fast", since=since)
+    adjust = await load_threshold_adjust(state)
+    if interrupts > 0:
+        adjust = tune_adjust(adjust, dismissed / interrupts)
+        await state.set_topic_weights(THRESHOLD_KEY, {"adjust": adjust})
+    return adjust
+
+
 # --- shadow mode (SPEC §4.6) ---
 
 

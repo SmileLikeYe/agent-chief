@@ -53,3 +53,4 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · Scheduler = 30s tick loop with (day, job) dedup set; memory TTL expiry piggybacks on the 03:00 distillation job.
 - 2026-07-04 · OpenClaw integration speaks plain JSON files under ~/.openclaw (tasks/ inbox for injection, outbox/ for delivery callback) — no OpenClaw API dependency, symmetric and inspectable.
 - 2026-07-04 · Demo GIF pipeline is asciinema+agg (vhs needs ttyd+ffmpeg, unavailable here); `make demo-gif` is the reproducible entry point.
+- 2026-07-04 · review(phase4): wired the two orphaned §4.6 pieces — daily global-threshold tuning now runs in the 03:00 job and its stored adjustment feeds score_and_route; USER.md is loaded into the judge context by the runtime.

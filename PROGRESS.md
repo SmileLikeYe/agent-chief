@@ -25,4 +25,21 @@
 | 21 | Digest polish + nightly distillation | ✅ | 6000119 | 2026-07-04 |
 | 22 | OpenClaw skill | ✅(mocked) | 641a140 | 2026-07-04 |
 | 23 | Docs + README | ✅ | 8cafd6d | 2026-07-04 |
-| 24 | Release assets | ✅(mocked) | | 2026-07-04 |
+| 24 | Release assets | ✅(mocked) | ab916fa | 2026-07-04 |
+
+## Final summary (2026-07-04)
+
+All 24 steps complete, one commit per step, plus four hostile-review commits
+(review(phase1..4)). 218 tests + ruff green on every commit; GitHub Actions CI
+green on every push. `uvx --from . chief demo` delivers the offline
+day-of-engineer replay end-to-end (24 events → 14 blocked · 6 batched ·
+3 handled · interrupted exactly once), the full-table routing regression guards
+it permanently, and `make release-check` runs the demo from the built v0.1.0
+wheel.
+
+Steps marked ✅(mocked) were built against mocks/cassettes because they need
+human-only resources — live LLM API keys (8), torch disk space for real
+embeddings (9, 17), a Telegram bot token (11), a local OpenClaw install (22),
+and PyPI credentials (24). Details and the exact path to un-mock each one are
+in BLOCKERS.md. Design decisions taken where the spec was ambiguous are
+one-liners in docs/decisions.md (23 ADRs).

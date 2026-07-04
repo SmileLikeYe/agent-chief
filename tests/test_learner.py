@@ -146,3 +146,29 @@ async def test_rebuild_classifier_from_persisted_history(tmp_path):
         restarted = Learner(state, classifier=fresh)
         await restarted.rebuild_classifier()
         assert fresh.classify("CI failed on main branch today").action == "route"
+
+
+async def test_daily_threshold_tuning_persists_adjust(tmp_path):
+    """review(phase4): §4.6 tuning must actually run and feed routing."""
+    from core.learner import daily_threshold_tuning, load_threshold_adjust
+
+    async with State.open(tmp_path / "s.db") as state:
+        # 10 interrupts, 6 dismissed fast (60% > 40%) → +0.02
+        for i in range(10):
+            d = decision()
+            await state.save_decision(d.model_copy(update={"event_id": f"evt_{i}"}))
+        for i in range(6):
+            await state.save_feedback(f"evt_{i}", "dismissed_fast", NOW)
+        adjust = await daily_threshold_tuning(state, now=NOW)
+        assert adjust == pytest.approx(0.02)
+        assert await load_threshold_adjust(state) == pytest.approx(0.02)
+
+
+def test_threshold_adjust_changes_routing():
+    from core.scorer import score_and_route
+
+    scene = SceneState(scene="idle", confidence=0.8, signals={}, at=NOW)
+    r = jr(0.5)  # score 0.5 vs idle threshold 0.45
+    route_before, *_ = score_and_route(r, scene)
+    route_after, *_ = score_and_route(r, scene, threshold_adjust=0.10)  # threshold 0.55
+    assert route_before == "interrupt" and route_after == "digest"

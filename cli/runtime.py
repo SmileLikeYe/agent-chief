@@ -10,7 +10,14 @@ from rich.console import Console
 from context.infer import SceneEngine
 from context.providers.clock import ClockProvider
 from core.brain import Brain
-from core.config import audit_log_path, config_path, db_path, load_config, policy_path
+from core.config import (
+    audit_log_path,
+    config_path,
+    db_path,
+    load_config,
+    policy_path,
+    user_md_path,
+)
 from core.embedding import make_embedder
 from core.learner import Learner, ShadowMode
 from core.scorer import SimilarityClassifier
@@ -103,8 +110,11 @@ async def tick_jobs(
         await deliver(msg, "desktop", "idle", channels)
     if hm == "03:00" and (day, "distill") not in fired:
         fired.add((day, "distill"))
+        from core.learner import daily_threshold_tuning
+
         await distill(state, policy_file, now=now)
         await memory.expire(now=now)
+        await daily_threshold_tuning(state, now=now)
 
 
 async def scheduler_loop(state, memory, policy_file, channels, digest_times) -> None:
@@ -150,6 +160,9 @@ async def run_resident(once: bool = False) -> None:
             audit=AuditLog(audit_log_path()),
             embedder=embedder,
             actor=make_actor(state, config, channels),
+            user_profile=(
+                user_md_path().read_text(encoding="utf-8") if user_md_path().exists() else ""
+            ),
         )
 
         tasks: list[asyncio.Task] = []
