@@ -5,6 +5,22 @@ description = "Chief — the chief of staff for your agents and information sour
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
+authors = [{ name = "SmileLikeYe" }]
+keywords = [
+    "agents", "attention", "notifications", "triage", "llm",
+    "mcp", "local-first", "chief-of-staff", "interruption-management",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Utilities",
+]
 dependencies = [
     "typer>=0.12",
     "pydantic>=2.7",
@@ -17,6 +33,12 @@ dependencies = [
     "uvicorn>=0.50.0",
     "questionary>=2.1.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/SmileLikeYe/agent-chief"
+Repository = "https://github.com/SmileLikeYe/agent-chief"
+Issues = "https://github.com/SmileLikeYe/agent-chief/issues"
+Changelog = "https://github.com/SmileLikeYe/agent-chief/releases"
 
 [project.optional-dependencies]
 embeddings = ["sentence-transformers>=3.0"]

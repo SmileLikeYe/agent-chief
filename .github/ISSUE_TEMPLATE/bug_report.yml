@@ -1,0 +1,33 @@
+name: 🐛 Bug report
+description: Something behaves wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+      placeholder: |
+        1. Sent an event with `curl -X POST ...`
+        2. Expected route "digest", got "interrupt" at 2 AM
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: The Decision (if routing-related)
+      description: Paste the Decision JSON (route, score, components, reason) — `chief status` or the webhook response.
+      render: json
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "agent-chief 0.1.0 · Python 3.12 · Ubuntu 24.04"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: "`~/.chief/audit.log` lines or console output. Redact tokens."
+      render: shell

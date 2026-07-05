@@ -1,0 +1,23 @@
+name: 💡 Feature request
+description: An idea that would make Chief better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What attention-management pain does this solve? Start from the pain, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How you imagine it working. Sketches and half-ideas welcome.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I checked ROADMAP.md — this isn't something v1 deliberately excludes (web UI, cloud sync, Slack/Discord delivery, …)
+          required: true

@@ -1,0 +1,34 @@
+# ~/.chief/config.toml — annotated example (SPEC §10).
+# `chief init` generates this interactively; every question is skippable.
+
+[llm]
+# Judge backend: "ollama" (local, default) | "deepseek" | "anthropic" | "openai"
+# | "fixtures" (deterministic, offline — what the demo and tests use).
+backend = "ollama"
+model = "qwen2.5:7b"
+api_key = ""                      # not needed for ollama/fixtures
+
+[delivery]
+channels = ["terminal", "desktop"]  # + "telegram" once token/chat_id are set
+telegram_token = ""                 # @BotFather token
+chat_id = ""                        # your chat id
+
+[digest]
+times = ["08:00", "18:30"]          # digest delivery moments
+
+[quiet]
+hours = "23:00-08:00"               # interrupts become digest items at night...
+whitelist = ["family", "production_incident"]   # ...except these topics
+
+[dispatch]
+claude_code_workdir = "~/projects"  # where the claude-code executor runs
+enabled = true
+
+[context]
+foreground_app = false              # privacy-sensitive scene signal, default OFF
+
+[ingest]
+github = false                      # poll `gh` notifications every 5 min
+rss_urls = []                       # e.g. ["https://hnrss.org/frontpage"]
+webhook_token = "change-me"         # bearer token for POST /v1/events
+webhook_port = 8787
