@@ -18,10 +18,18 @@ jobs:
       - run: uv build
       # the demo must run from the exact wheel being released
       - run: uvx --from dist/*.whl chief demo --fast
-      - name: Create GitHub release with artifacts
+      - name: Extract this version's CHANGELOG section
+        run: |
+          awk -v tag="${GITHUB_REF_NAME#v}" '
+            $0 ~ "^## \\[" tag "\\]" {hit=1; next}
+            hit && /^## \[/ {exit}
+            hit {print}' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md for details." > notes.md
+      - name: Create or update the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "$GITHUB_REF_NAME" \
-            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details."
+            --title "$GITHUB_REF_NAME" --notes-file notes.md \
+          || { gh release edit "$GITHUB_REF_NAME" --notes-file notes.md \
+               && gh release upload "$GITHUB_REF_NAME" dist/* --clobber; }
