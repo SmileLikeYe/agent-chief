@@ -23,9 +23,16 @@
 | 19 | Built-in sources: GitHub + RSS | ✅ | 366333c | 2026-07-04 |
 | 20 | Onboarding wizard + service install | ✅ | 44da161 | 2026-07-04 |
 | 21 | Digest polish + nightly distillation | ✅ | 6000119 | 2026-07-04 |
-| 22 | OpenClaw skill | ✅(mocked) | 641a140 | 2026-07-04 |
+| 22 | OpenClaw skill | ✅(mocked) — merged into 29 | 641a140 | 2026-07-04 |
 | 23 | Docs + README | ✅ | 8cafd6d | 2026-07-04 |
 | 24 | Release assets | ✅(mocked) | ab916fa | 2026-07-04 |
+| 25 | Golden dataset + eval harness | ⏳ | | |
+| 26 | Decision trace + cost accounting | ⏳ | | |
+| 27 | Prompt governance | ⏳ | | |
+| 28 | Failure injection + graceful degradation | ⏳ | | |
+| 29 | Dual skill packaging (absorbs 22) | ⏳ | | |
+| 30 | Upstream integration examples | ⏳ | | |
+| 31 | README v2 — quantified first screen | ⏳ | | |
 
 ## Final summary (2026-07-04)
 

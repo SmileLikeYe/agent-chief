@@ -456,6 +456,58 @@ Maintain this table; update the row in the same commit that completes the step:
 - Accept: `make demo-gif` reproduces the README GIF; `uvx agent-chief demo` works from the published package (test PyPI).
 - Commit: `chore(release): v0.1.0 demo assets and checklist`
 
+### Phase 5 — Trust & Distribution (v3.1 amendment, Steps 25–31)
+
+> v3.1 execution order interleaves these with the original steps:
+> 8 → 9 → 10 → 11 → 12 → 13 → **25 → 26 → 27 → 28** → 14 → 15 → 16 → 17 →
+> 18 → 19 → 20 → **29 → 30** → 21 → 23 → **31** → 24.
+> Original Step 22 is absorbed by Step 29 (mark "merged into 29" in
+> PROGRESS.md). Hostile reviews after Steps 13, 28, 20, and 31.
+
+**Step 25 · Golden dataset + eval harness**
+- Build `eval/golden.jsonl`: ~200 labeled events (expand from the demo fixture + synthesize diverse scenes/topics/edge cases), each with expected route and a one-line rationale.
+- Eval runner computes routing agreement rate, bucketed by route / topic / scene. Strictly separate CAPABILITY evals (golden set, improvable, report the number) from REGRESSION evals (the demo 24, must stay 100%, wired into CI).
+- CLI: `chief eval [--backend X]` → markdown report to eval/reports/.
+- Accept: fixture backend scores 100% on regression; a real backend produces a bucketed agreement report; CI fails if regression < 100%.
+- Commit: `feat(eval): golden dataset and evaluation harness`
+
+**Step 26 · Decision trace + cost accounting**
+- Every Decision records: per-stage latency, tokens in/out, cached tokens (read from API usage fields), and USD cost via a per-backend price table (model DeepSeek cache-hit vs cache-miss pricing explicitly).
+- CLI: `chief trace <event_id>` replays the full decision chain (stages, rules matched, scores, prompt version, cost).
+- Tact Report gains a cost dimension: % events reaching LLM, cache hit rate, total judgment cost.
+- Accept: trace renders a complete chain; unit tests for cost math incl. cache-hit/miss price gap; report shows all three metrics.
+- Commit: `feat(trace): decision tracing and cost accounting`
+
+**Step 27 · Prompt governance**
+- Migrate all prompts in judge/prompts.py to versioned Jinja2 templates (provider-agnostic variables). Prompt version is stamped into every Decision audit record.
+- `chief eval --compare <promptV1> <promptV2>` produces a diff report: agreement delta + list of flipped samples.
+- Rule (add to CONTRIBUTING.md): no prompt change merges without an eval diff report.
+- Accept: changing one word in a template yields a diff report with flipped samples; version appears in audit log.
+- Commit: `feat(judge): versioned prompt templates with eval-gated changes`
+
+**Step 28 · Failure injection + graceful degradation**
+- Chaos tests: judge returns malformed JSON, times out, or the backend is fully down.
+- Degradation policy: when no backend is available, fall back to rules-only conservative routing (all borderline events → digest, never interrupt), mark decisions `degraded=true` in audit, auto-recover when backend returns. `chief status` shows degradation state.
+- Accept: with backend killed, no crash, all events get conservative routes with degraded flag; recovery test passes.
+- Commit: `feat(core): failure injection and graceful degradation`
+
+**Step 29 · Dual skill packaging (absorbs old Step 22)**
+- Ship BOTH: an OpenClaw skill (per old §4.9) and a Claude Code skill. Add a `chief lite` mode: judgment-only (stages 1–3 + routing, no learner, no delivery daemon) so the skill form works standalone with minimal setup.
+- Accept: both SKILL.md files lint clean; documented manual test transcript for each host.
+- Commit: `feat(skills): claude-code and openclaw skill packaging`
+
+**Step 30 · Upstream integration examples**
+- `examples/integrations/`: two runnable examples showing the ecosystem position "noisy upstream agents → Chief as the judgment layer": (a) a stock-analysis-bot style feed (daily_stock_analysis-like, fixture-driven), (b) a generic webhook template any agent can copy.
+- Each: one runnable script + a README section explaining the flow end-to-end.
+- Accept: both scripts run end-to-end on fixture data producing visible Decisions.
+- Commit: `docs(examples): upstream source integrations`
+
+**Step 31 · README v2 — quantified first screen**
+- Rewrite README: first screen leads with NUMBERS generated from real eval/demo output (interception rate, interrupts/day, % events reaching LLM, cache hit rate, judgment cost) — include a script that regenerates every number; then demo GIF placeholder, 60s quickstart.
+- Promote "explainable judgment" to a first-class selling point (reason + components + `chief trace` for every decision). Keep the kill-all-clear section. Add the skills + integrations sections.
+- Accept: every number in README is reproducible via `make readme-metrics`.
+- Commit: `docs(readme): quantified value proposition`
+
 ## 10. Config Sample (`~/.chief/config.toml`)
 ```toml
 [llm]      backend = "deepseek"   model = "deepseek-v4-flash"   # or ollama/qwen3-4b
