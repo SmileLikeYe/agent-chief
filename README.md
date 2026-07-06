@@ -125,8 +125,11 @@ r 1 |█████████████████   | 86%
 r 2 |████████████████████| 100%
 ```
 
-No labels, no gradient, no black box (SPEC §13: explainable by construction) —
-you can watch the learned per-topic lean in the console's **Learning** tab.
+No labels, no gradient, no black box (SPEC §13: explainable by construction).
+It corrects the *borderline* calls — the ones that actually need judgment,
+since stage-1 rules already handle the obvious. Watch the learned per-topic
+lean in the console's **Learning** tab, or reproduce the curve with
+`chief eval --learning`.
 
 ## 🕶️ Shadow mode: trust is earned
 

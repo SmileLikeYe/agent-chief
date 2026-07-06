@@ -49,12 +49,11 @@ def eval_cmd(
     ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
-    from pathlib import Path
-
     from rich.console import Console
 
     from eval.runner import (
         REPORTS_DIR,
+        _writable_dir,
         run_capability,
         run_compare,
         run_regression,
@@ -69,17 +68,22 @@ def eval_cmd(
 
         from eval.learning import render_markdown as render_learning
         from eval.learning import run_learning
-        from eval.runner import REPORTS_DIR
 
+        if compare[0] or backend != "fixtures":
+            console.print(
+                "[yellow]note[/yellow]: --learning ignores --compare/--backend "
+                "(the reward loop uses the built-in scorer, not an LLM judge)"
+            )
         report = asyncio.run(run_learning())
-        out_dir = Path(out or REPORTS_DIR)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        path = out_dir / "learning.md"
+        path = _writable_dir(out or REPORTS_DIR) / "learning.md"
         path.write_text(render_learning(report), encoding="utf-8")
-        tone = "green" if report.improved > 0 else "red"
+        converged = report.rounds_to_converge is not None
+        tone = "green" if converged else "red"
+        where = (f"converged in {report.rounds_to_converge} rounds"
+                 if converged else "did not reach 95%")
         console.print(
             f"[{tone}]learning[/{tone}] agreement {report.baseline:.0%} → "
-            f"{report.final:.0%} (converged in {report.rounds_to_converge} rounds) → {path}"
+            f"{report.final:.0%} ({where}) → {path}"
         )
         return
 

@@ -95,6 +95,6 @@ Judgment is a claim too, so v3.1 makes it inspectable end to end:
 | `memory/` | memory store, TTL/archive, association |
 | `delivery/` | level abstraction + terminal/desktop/telegram channels |
 | `demo/` | offline day-of-engineer replay (the 60-second wow) |
-| `eval/` | golden dataset, capability/regression eval runner, prompt compare |
+| `eval/` | golden dataset, capability/regression runner, prompt compare, preference-learning reward loop |
 | `ui/` | local web console (one static HTML file, served on 127.0.0.1) |
 | `skills/` | claude-code + openclaw SKILL.md packaging (propose-and-obey) |

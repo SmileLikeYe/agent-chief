@@ -43,9 +43,41 @@ async def test_reward_loop_trains_the_policy():
 
 async def test_learning_is_monotonic_and_stable():
     report = await run_learning(rounds=12)
-    # agreement never regresses round-to-round, and holds at the top
+    # agreement never regresses round-to-round (monotonic by construction:
+    # feedback() returns None once a topic is correct, freezing its weights)
     assert all(a <= b + 1e-9 for a, b in zip(report.curve, report.curve[1:], strict=False))
-    assert report.curve[-1] == report.curve[report.rounds_to_converge]
+    assert report.rounds_to_converge is not None  # it does converge
+    assert report.curve[-1] == report.curve[report.rounds_to_converge]  # and holds
+
+
+async def test_readme_curve_is_reproducible():
+    """The exact curve the README publishes must stay true (no readme-metrics
+    gate covers it, so pin it here)."""
+    report = await run_learning(rounds=12)
+    assert report.baseline == 0.0
+    assert report.final == 1.0
+    assert report.rounds_to_converge == 2
+    # README shows r1≈86%, r2=100%
+    assert round(report.curve[1], 2) == 0.86
+    assert report.curve[2] == 1.0
+
+
+async def test_below_threshold_topic_cannot_be_learned():
+    """Honest limit: preference alone can't push a near-zero-signal event over
+    the interrupt bar (weights are bounded) — this is by design, not a bug."""
+    import eval.learning as L
+    from core.state import State
+
+    weak = list(L.INBOX) + [("whisper.topic", True, 0.20)]  # wanted but tiny signal
+    original = L.INBOX
+    L.INBOX = weak
+    try:
+        async with State.open(":memory:") as st:
+            report = await run_learning(rounds=15, state=st)
+        assert report.final < 1.0  # the whisper topic never crosses
+        assert report.rounds_to_converge is None
+    finally:
+        L.INBOX = original
 
 
 async def test_learning_is_deterministic():

@@ -101,8 +101,10 @@ def _result(strength: float) -> JudgeResult:
 
 async def run_learning(rounds: int = 12, state: State | None = None) -> LearningReport:
     """Run the closed loop for `rounds`; return the agreement curve."""
-    topics = [t for t, _, _ in INBOX]
-    user = SimUser(wants_interrupt=set(WANTED))
+    inbox = INBOX  # read at call time so tests can vary the scenario
+    topics = [t for t, _, _ in inbox]
+    strength = {t: s for t, _, s in inbox}
+    user = SimUser(wants_interrupt={t for t, want, _ in inbox if want})
 
     async def _loop(st: State) -> LearningReport:
         learner = Learner(st)
@@ -113,7 +115,7 @@ async def run_learning(rounds: int = 12, state: State | None = None) -> Learning
             for i, topic in enumerate(topics):
                 weights = await st.get_topic_weights(topic)
                 route, score, comps, _ = score_and_route(
-                    _result(STRENGTH[topic]), scene, topic_weights=weights)
+                    _result(strength[topic]), scene, topic_weights=weights)
                 agreed += user.agrees(topic, route)
                 signal = user.feedback(topic, route)
                 if signal:
@@ -155,10 +157,17 @@ def render_markdown(report: LearningReport, now: datetime | None = None) -> str:
         "",
         f"**Routing agreement: {report.baseline:.0%} → {report.final:.0%} "
         f"({report.improved:+.0%})** · "
-        f"converged in {report.rounds_to_converge} round(s)",
+        + (f"converged in {report.rounds_to_converge} round(s)"
+           if report.rounds_to_converge is not None else "did not reach 95%"),
         "",
         "Reward = user's should/shouldn't-interrupt signal · policy = per-topic "
         "weighted routing · training = EMA. No labels, no gradient.",
+        "",
+        "> What this proves and doesn't: feedback moves *borderline* events across "
+        "the interrupt threshold — which is the whole job, since stage-1 rules and "
+        "clear high/low scores already handle the obvious. It cannot make an "
+        "event with near-zero signal on every dimension interrupt on preference "
+        "alone (weights are bounded); that is a feature, not a limit to hide.",
         "",
         "## Learning curve (agreement per round)",
         "",
@@ -166,7 +175,9 @@ def render_markdown(report: LearningReport, now: datetime | None = None) -> str:
     ]
     for r, v in enumerate(report.curve):
         lines.append(f"r{r:>2} |{bar(v):<20}| {v:.0%}")
-    lines += ["```", "", "## Final learned weights (urgency dim, default 0.20)", ""]
+    lines += ["```", "",
+              "## Final learned weights (urgency dim, default 0.20; the console "
+              "Learning tab shows the mean across all five dimensions)", ""]
     for topic, w in report.final_weights.items():
         want = "want interrupt" if topic in WANTED else "want silence"
         lines.append(f"- `{topic}` → {w['urgency']:.2f}  ({want})")
