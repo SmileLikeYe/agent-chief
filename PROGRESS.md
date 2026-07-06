@@ -32,7 +32,7 @@
 | 28 | Failure injection + graceful degradation | ✅ | b9867a2 | 2026-07-05 |
 | 29 | Dual skill packaging (absorbs 22) | ✅(mocked) | 1d917d7 | 2026-07-05 |
 | 30 | Upstream integration examples | ✅ | 804084c | 2026-07-05 |
-| 31 | README v2 — quantified first screen | ✅ | (this) | 2026-07-05 |
+| 31 | README v2 — quantified first screen | ✅ | dfb6346 | 2026-07-05 |
 
 ## Final summary (2026-07-04)
 
@@ -50,3 +50,27 @@ embeddings (9, 17), a Telegram bot token (11), a local OpenClaw install (22),
 and PyPI credentials (24). Details and the exact path to un-mock each one are
 in BLOCKERS.md. Design decisions taken where the spec was ambiguous are
 one-liners in docs/decisions.md (23 ADRs).
+
+## Final summary — v3.1 amendment (2026-07-05)
+
+Steps 25-31 complete, one commit per step, plus two hostile-review commits
+(review(phase5) after Step 28, review(phase6) after Step 31). Steps 8-24 were
+already ✅ from the v3 run (original Step 22 absorbed into Step 29). 265 tests
++ ruff green on every commit; `make release-check` re-verified from the built
+wheel (`chief demo`, `chief eval`, and `chief lite` all run installed).
+
+What v3.1 added: a 200-case golden dataset with a capability/regression-split
+eval harness (`chief eval`, CI-gated at 100% on the demo 24); per-decision
+tracing and USD cost accounting with explicit DeepSeek cache-hit/miss pricing
+(`chief trace`); versioned Jinja2 prompt templates with eval-gated changes
+(`chief eval --compare`); chaos-tested graceful degradation (judge down →
+rules-only conservative routing, degraded=true, auto-recovery, surfaced in
+`chief status`); dual skill packaging with a zero-daemon `chief lite` mode;
+runnable upstream-integration examples; and a README whose first-screen
+numbers regenerate via `make readme-metrics` (gated by
+tests/test_readme_metrics.py).
+
+Mocked pieces and their un-mock paths are in BLOCKERS.md (live-backend eval
+numbers and prompt-compare diffs need an LLM key; live skill-host halves need
+OpenClaw / a Claude Code session). New design decisions: 14 ADRs appended to
+docs/decisions.md.

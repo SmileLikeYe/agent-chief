@@ -8,11 +8,15 @@ throughout the code point there). Build log: `PROGRESS.md`.
 ## Commands
 
 ```bash
-make test           # uv run pytest (218 tests, offline, no keys needed)
+make test           # uv run pytest (265 tests, offline, no keys needed)
 make lint           # uv run ruff check .
 make demo           # offline day-of-engineer replay (deterministic)
+make readme-metrics # regenerate the quantified README first screen
 make release-check  # lint + test + build wheel + run demo from the wheel via uvx
 uv run pytest tests/test_routing.py -k name   # single test
+uv run chief eval   # regression (demo 24, must be 100%) + capability (golden 200)
+uv run chief trace <event_id>   # replay one decision chain with costs
+uv run chief lite '<event json>'  # zero-daemon judgment (skills use this)
 ```
 
 Everything runs through `uv`. Python 3.12. No network, no API keys, and no
@@ -33,6 +37,10 @@ tables use a JSON `data` blob column) → fire-and-forget actor
 (`dispatch/acceptance.py` — "done is a claim, not a proof"), then delivery.
 Learning: `core/learner.py` (EMA topic weights, shadow mode, nightly
 threshold tuning at 03:00 via the scheduler in `cli/runtime.py`).
+v3.1 additions: `eval/` (golden 200-case dataset + agreement harness),
+`Decision.trace` (per-stage latency/tokens/USD via `judge/pricing.py`),
+versioned prompts (`judge/templates/<v>/*.j2`), and judge-failure degradation
+(rules-only conservative routing, `degraded=true`, auto-recovery).
 
 ## Conventions
 
@@ -51,5 +59,7 @@ threshold tuning at 03:00 via the scheduler in `cli/runtime.py`).
   (`--extra embeddings`) — never make it a hard import.
 - Human-only resources (LLM keys, Telegram token, PyPI creds) are mocked;
   status and un-mock instructions live in `BLOCKERS.md`.
+- Prompts are versioned template dirs; no prompt change without a
+  `chief eval --compare` diff report (CONTRIBUTING.md).
 - Commit style: `feat(scope): ...` / `fix:` / `docs:` / `review(phaseN): ...`;
   ruff + pytest green on every commit.
