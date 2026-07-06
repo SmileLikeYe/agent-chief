@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-tags: true
+          fetch-depth: 0  # tags needed; fetch-tags+shallow is unreliable (actions/checkout#1467)
       - name: Upsert a release per changelog version
         env:
           GH_TOKEN: ${{ github.token }}
