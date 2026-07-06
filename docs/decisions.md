@@ -54,3 +54,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-04 · OpenClaw integration speaks plain JSON files under ~/.openclaw (tasks/ inbox for injection, outbox/ for delivery callback) — no OpenClaw API dependency, symmetric and inspectable.
 - 2026-07-04 · Demo GIF pipeline is asciinema+agg (vhs needs ttyd+ffmpeg, unavailable here); `make demo-gif` is the reproducible entry point.
 - 2026-07-04 · review(phase4): wired the two orphaned §4.6 pieces — daily global-threshold tuning now runs in the 03:00 job and its stored adjustment feeds score_and_route; USER.md is loaded into the judge context by the runtime.
+- 2026-07-05 · eval/ is a real Python package even though it shadows the builtin name — SPEC v3.1 mandates the eval/golden.jsonl path and builtin eval() is unaffected; shipped in the wheel so `chief eval` works installed.
+- 2026-07-05 · Golden labels are rule-first and generator-verified against the live pipeline (eval/generate_golden.py fails on mismatch); the fixture backend is the 100% sanity ceiling, real backends measure divergence from it.
+- 2026-07-05 · Golden cases reuse the demo fixture schema (Fixture/ReplayEntry + replay()) with a meta first line in the JSONL — one pipeline for demo, regression and capability evals.

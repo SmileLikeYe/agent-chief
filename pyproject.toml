@@ -71,6 +71,7 @@ packages = [
     "demo",
     "skills",
     "policy",
+    "eval",
 ]
 
 [tool.ruff]

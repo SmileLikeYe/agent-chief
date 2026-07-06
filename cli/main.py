@@ -17,6 +17,36 @@ def demo(fast: bool = typer.Option(False, "--fast", help="Replay without delays 
     run_demo(fast=fast)
 
 
+@app.command(name="eval")
+def eval_cmd(
+    backend: str = typer.Option("fixtures", "--backend", help="Judge backend to evaluate."),
+    out: str = typer.Option(None, "--out", help="Report directory (default eval/reports/)."),
+):
+    """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
+    from rich.console import Console
+
+    from eval.runner import REPORTS_DIR, run_capability, run_regression, write_report
+
+    console = Console()
+    judge = None
+    if backend != "fixtures":
+        from core.config import load_config
+        from judge.factory import make_judge
+
+        judge = make_judge({**load_config().get("llm", {}), "backend": backend})
+
+    out_dir = out or REPORTS_DIR
+    for report in (run_regression(judge), run_capability(judge)):
+        path = write_report(report, out_dir)
+        tone = "green" if report.kind == "capability" or report.agreement == 1.0 else "red"
+        console.print(
+            f"[{tone}]{report.kind}[/{tone}] agreement "
+            f"{report.agreement:.1%} ({report.agreed}/{report.total}) → {path}"
+        )
+        if report.kind == "regression" and report.agreement < 1.0:
+            raise typer.Exit(code=1)  # regression must stay 100%
+
+
 @app.command()
 def init(
     defaults: bool = typer.Option(

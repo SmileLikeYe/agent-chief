@@ -45,6 +45,7 @@ class ReplayEntry:
     dispatch: dict[str, Any] | None = None
     beat: str | None = None
     digest_moment: str | None = None
+    rationale: str | None = None  # golden-set label rationale (eval harness, Step 25)
 
 
 @dataclass
