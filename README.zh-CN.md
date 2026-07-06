@@ -6,7 +6,6 @@
 
 [![CI](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml/badge.svg)](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/SmileLikeYe/agent-chief?color=6366f1)](https://github.com/SmileLikeYe/agent-chief/releases)
-[![PyPI](https://img.shields.io/pypi/v/agent-chief)](https://pypi.org/project/agent-chief/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 

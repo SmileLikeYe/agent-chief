@@ -20,8 +20,9 @@ jobs:
       - run: uvx --from dist/*.whl chief demo --fast
       - name: Extract this version's CHANGELOG section
         run: |
-          awk -v tag="${GITHUB_REF_NAME#v}" '
-            $0 ~ "^## \\[" tag "\\]" {hit=1; next}
+          # literal match (index, not regex) so tags with metachars can't misparse
+          awk -v h="## [${GITHUB_REF_NAME#v}]" '
+            index($0, h) == 1 {hit=1; next}
             hit && /^## \[/ {exit}
             hit {print}' CHANGELOG.md > notes.md
           [ -s notes.md ] || echo "See CHANGELOG.md for details." > notes.md
@@ -29,7 +30,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "$GITHUB_REF_NAME" --notes-file notes.md \
-          || { gh release edit "$GITHUB_REF_NAME" --notes-file notes.md \
-               && gh release upload "$GITHUB_REF_NAME" dist/* --clobber; }
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "$GITHUB_REF_NAME" --notes-file notes.md
+          fi

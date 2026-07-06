@@ -23,3 +23,9 @@ def test_help_lists_all_subcommands():
     assert result.exit_code == 0
     for cmd in SUBCOMMANDS:
         assert cmd in result.output, f"missing subcommand: {cmd}"
+
+
+def test_version_flag():
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert result.output.startswith("chief ")

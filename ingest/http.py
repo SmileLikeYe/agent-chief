@@ -16,7 +16,14 @@ DEFAULT_PORT = 8787
 
 
 def create_app(brain: Brain, token: str) -> FastAPI:
-    app = FastAPI(title="chief ingest", version="0.1.0")
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as pkg_version
+
+    try:
+        v = pkg_version("agent-chief")
+    except PackageNotFoundError:
+        v = "0.0.0+source"
+    app = FastAPI(title="chief ingest", version=v)
 
     def check_auth(request: Request) -> None:
         header = request.headers.get("authorization", "")

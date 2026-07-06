@@ -1,4 +1,4 @@
-.PHONY: test lint demo demo-gif build release-check
+.PHONY: test lint demo demo-gif clean-dist build release-check readme-metrics
 
 test:
 	uv run pytest
@@ -18,9 +18,9 @@ demo-gif:
 clean-dist:
 	rm -f dist/*
 
-build:
+build: clean-dist
 	uv build
 
-release-check: clean-dist lint test build
+release-check: lint test build
 	uvx --isolated --from dist/agent_chief-*-py3-none-any.whl chief demo --fast > /dev/null
 	@echo "release check passed"

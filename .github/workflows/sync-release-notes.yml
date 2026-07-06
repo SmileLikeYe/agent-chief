@@ -2,6 +2,8 @@ name: Sync release notes
 # Release notes live in CHANGELOG.md; this keeps published GitHub releases in
 # sync with it (and backfills a release for any tag that predates release.yml).
 # Runs only when the changelog (or this file) changes.
+# NOTE: the `## [x.y.z]` heading format is load-bearing — both this workflow
+# and release.yml parse it.
 on:
   push:
     branches: [main]
@@ -17,21 +19,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for version in $(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md); do
+          versions=$(grep -oP '^## \[\K[^\]]+' CHANGELOG.md)
+          for version in $versions; do
             tag="v$version"
             # tag existence is a remote fact — never trust the local checkout
             gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag" >/dev/null || {
               echo "no tag $tag on the remote; skipping"; continue; }
-            awk -v v="$version" '
-              $0 ~ "^## \\[" v "\\]" {hit=1; next}
+            # literal match (index, not regex) so versions with metachars can't misparse
+            awk -v h="## [$version]" '
+              index($0, h) == 1 {hit=1; next}
               hit && /^## \[/ {exit}
               hit {print}' CHANGELOG.md > notes.md
+            # never blank a published release with an empty extraction
+            [ -s notes.md ] || { echo "empty notes for $tag; skipping"; continue; }
             if gh release view "$tag" >/dev/null 2>&1; then
               gh release edit "$tag" --notes-file notes.md
             else
               gh release create "$tag" --title "$tag" --notes-file notes.md --latest=false
             fi
           done
-          # the changelog lists newest first: its first version is Latest
-          latest="v$(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1)"
-          gh release view "$latest" >/dev/null 2>&1 && gh release edit "$latest" --latest
+          # the changelog lists newest first: its first version is Latest —
+          # but only if that release exists yet (changelog may land pre-tag)
+          latest="v$(printf '%s\n' $versions | head -1)"
+          if gh release view "$latest" >/dev/null 2>&1; then
+            gh release edit "$latest" --latest
+          fi

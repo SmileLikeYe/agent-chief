@@ -9,6 +9,8 @@
 ## Publish (needs human credentials)
 - [ ] Test PyPI: `uv publish --index testpypi`, verify `uvx agent-chief demo`
 - [ ] Real PyPI: `uv publish` (name `agent-chief` confirmed free on 2026-07-04)
+- [ ] After publish: restore the PyPI badge in README.md / README.zh-CN.md
+      (removed pre-publish because it rendered "not found")
 
 ---
 
@@ -23,7 +25,7 @@
 - [ ] Test PyPI: `uv publish --index testpypi` (token required), then verify
       `uvx --index-url https://test.pypi.org/simple/ agent-chief demo`
 - [ ] Real PyPI: `uv publish` (name `agent-chief` confirmed free on 2026-07-04)
-- [ ] GitHub release on the `v0.1.0` tag, attach the demo GIF
+- [x] GitHub release on the `v0.1.0` tag (backfilled 2026-07-06 via the notes-sync workflow; the demo GIF ships in the README rather than as a release asset)
 
 ## Ecosystem
 - [ ] ClawHub submission: `skills/openclaw/` (SKILL.md + hook), positioning line:

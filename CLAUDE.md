@@ -61,5 +61,8 @@ versioned prompts (`judge/templates/<v>/*.j2`), and judge-failure degradation
   status and un-mock instructions live in `BLOCKERS.md`.
 - Prompts are versioned template dirs; no prompt change without a
   `chief eval --compare` diff report (CONTRIBUTING.md).
+- Release flow: bump pyproject version + add a CHANGELOG.md entry + push a
+  `v*` tag; workflows do the rest. The `## [x.y.z]` changelog heading format
+  is load-bearing — release.yml and sync-release-notes.yml parse it.
 - Commit style: `feat(scope): ...` / `fix:` / `docs:` / `review(phaseN): ...`;
   ruff + pytest green on every commit.
