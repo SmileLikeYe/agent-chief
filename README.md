@@ -110,6 +110,24 @@ diff** on the 200-case golden set (`chief eval --compare v1 v2`). If the LLM
 backend dies, Chief degrades to rules-only conservative routing — never
 interrupts while blind — and heals itself when the backend returns.
 
+## 📈 It learns your preferences — and proves it
+
+The 👍/👎 you give ("worth my attention" / "don't bother me") is a reward
+signal; the per-topic EMA weights are the policy; feedback trains them. Chief
+ships an eval that measures the loop closing — a simulated user with hidden
+preferences, corrected only by the ±1 signal:
+
+```console
+$ chief eval --learning
+Routing agreement: 0% → 100% (+100%) · converged in 2 rounds
+r 0 |                    | 0%
+r 1 |█████████████████   | 86%
+r 2 |████████████████████| 100%
+```
+
+No labels, no gradient, no black box (SPEC §13: explainable by construction) —
+you can watch the learned per-topic lean in the console's **Learning** tab.
+
 ## 🕶️ Shadow mode: trust is earned
 
 For its first 7 days (or 50 graded samples), Chief **never actually interrupts

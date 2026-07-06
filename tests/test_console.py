@@ -112,3 +112,36 @@ def test_console_html_ships_in_the_package():
     for needle in ("Today", "History", "Rules", "Tasks", "Sources",
                    "should_interrupt", "should_not_interrupt"):
         assert needle in text
+
+
+async def test_learning_view_reflects_feedback(console):
+    c, brain, state, _ = console
+    from core.learner import Learner
+
+    learner = Learner(state)
+    # a decision the user then grades 👎
+    decision = await brain.process(
+        {"source": "rss", "topic": "news.spam", "summary": "buy now",
+         "dedup_key": "spam1"})
+    event = await state.load_event(decision.event_id)
+    await learner.record(event, decision, "should_not_interrupt", at=event.received_at)
+
+    body = (await c.get("/api/learning", headers=AUTH)).json()
+    assert body["signals"]["should_not_interrupt"] == 1
+    row = next(t for t in body["topics"] if t["topic"] == "news.spam")
+    assert row["drift"] < 0  # 👎 pushed the topic toward silence
+
+
+async def test_learning_view_empty_when_nothing_learned(console):
+    c, *_ = console
+    body = (await c.get("/api/learning", headers=AUTH)).json()
+    assert body["topics"] == []
+    assert body["default"] == 0.2
+
+
+def test_console_html_has_learning_view():
+    from ui import CONSOLE_HTML_PATH
+
+    text = CONSOLE_HTML_PATH.read_text(encoding="utf-8")
+    assert 'data-v="learning"' in text
+    assert "/api/learning" in text

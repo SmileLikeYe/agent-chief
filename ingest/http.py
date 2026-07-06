@@ -189,4 +189,31 @@ def create_app(
 
         return connector_status()
 
+    @app.get("/api/learning")
+    async def learning(_: None = Depends(check_auth)):
+        """What Chief has learned from feedback: per-topic weight drift from the
+        0.20 default, plus the feedback tally that shaped it."""
+        from core.scorer import DEFAULT_WEIGHTS, DIMS
+
+        default = DEFAULT_WEIGHTS["urgency"]
+        rows = []
+        for topic, w in await brain.state.all_topic_weights():
+            avg = sum(w.get(d, default) for d in DIMS) / len(DIMS)
+            rows.append({
+                "topic": topic,
+                "weight": round(avg, 3),
+                "drift": round(avg - default, 3),  # + = more likely to interrupt
+                "urgency": round(w.get("urgency", default), 3),
+            })
+        rows.sort(key=lambda r: r["drift"], reverse=True)
+        return {
+            "default": default,
+            "topics": rows,
+            "signals": {
+                s: await brain.state.count_feedback(signal=s)
+                for s in ("should_interrupt", "should_not_interrupt",
+                          "acted", "dismissed_fast", "muted")
+            },
+        }
+
     return app

@@ -44,8 +44,13 @@ def eval_cmd(
     compare: tuple[str, str] = typer.Option(
         (None, None), "--compare", help="Diff two prompt versions on the golden set."
     ),
+    learning: bool = typer.Option(
+        False, "--learning", help="Run the preference-learning (reward-loop) eval."
+    ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
+    from pathlib import Path
+
     from rich.console import Console
 
     from eval.runner import (
@@ -58,6 +63,25 @@ def eval_cmd(
     )
 
     console = Console()
+
+    if learning:
+        import asyncio
+
+        from eval.learning import render_markdown as render_learning
+        from eval.learning import run_learning
+        from eval.runner import REPORTS_DIR
+
+        report = asyncio.run(run_learning())
+        out_dir = Path(out or REPORTS_DIR)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        path = out_dir / "learning.md"
+        path.write_text(render_learning(report), encoding="utf-8")
+        tone = "green" if report.improved > 0 else "red"
+        console.print(
+            f"[{tone}]learning[/{tone}] agreement {report.baseline:.0%} → "
+            f"{report.final:.0%} (converged in {report.rounds_to_converge} rounds) → {path}"
+        )
+        return
 
     def build_judge(prompt_version: str | None = None):
         if backend == "fixtures":

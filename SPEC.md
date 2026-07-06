@@ -540,6 +540,11 @@ Maintain this table; update the row in the same commit that completes the step:
 - Accept: release-check green from the wheel incl. `chief ui` assets; v0.3.0 release live with artifacts.
 - Commit: `chore(release): v0.3.0 — product surface`
 
+**Step 37 · Preference-learning eval (reward loop)**
+- `eval/learning.py`: a simulated user with hidden per-topic preferences; Chief starts at uniform weights and is corrected only by the ±1 natural-feedback signal. Measure routing agreement vs the user's truth over rounds → a learning curve. reward = feedback, policy = weighted routing, training = EMA, eval = agreement. No labels, no gradient (SPEC §13 holds). `chief eval --learning` → markdown report. Console gains a Learning view (per-topic learned drift + feedback tally, `/api/learning`).
+- Accept: agreement rises from <50% to ≥95% and is monotonic + deterministic; wanted topics' weights rise and unwanted fall; a no-feedback user causes no learning; CLI + API + console covered.
+- Commit: `feat(eval): preference-learning reward loop`
+
 ## 10. Config Sample (`~/.chief/config.toml`)
 ```toml
 [llm]      backend = "deepseek"   model = "deepseek-v4-flash"   # or ollama/qwen3-4b

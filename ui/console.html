@@ -46,6 +46,7 @@
     <button data-v="today" class="on">Today</button>
     <button data-v="history">History</button>
     <button data-v="rules">Rules</button>
+    <button data-v="learning">Learning</button>
     <button data-v="tasks">Tasks</button>
     <button data-v="sources">Sources</button>
   </nav>
@@ -126,6 +127,32 @@ const views = {
     return `<p class="dim">POLICY.md — your edits win over everything learned, effective immediately.</p>
       <textarea id="policy">${esc(p.text)}</textarea>
       <p><button class="act" onclick="savePolicy()">Save</button> <span id="saved" class="ok"></span></p>`;
+  },
+  async learning() {
+    const d = await api("/api/learning");
+    const sig = d.signals || {};
+    const scale = Math.max(0.2, ...d.topics.map(t => Math.abs(t.drift)), 0.01);
+    const barFor = drift => {
+      const pct = Math.round(Math.abs(drift) / scale * 100);
+      const color = drift >= 0 ? "var(--good)" : "var(--bad)";
+      const side = drift >= 0 ? "left" : "right";
+      return `<div style="height:8px;background:${color};width:${pct}%;border-radius:4px;margin-${side}:auto"></div>`;
+    };
+    const head = `<p class="dim">Chief learns per-topic from your 👍/👎. Bars right of centre = "interrupt me more"; left = "leave me alone". Default weight ${d.default}.</p>
+      <div class="row" style="margin-bottom:10px">
+        <span class="ok">👍 ${sig.should_interrupt||0}</span>
+        <span class="warn">👎 ${sig.should_not_interrupt||0}</span>
+        <span class="dim">acted ${sig.acted||0} · dismissed ${sig.dismissed_fast||0} · muted ${sig.muted||0}</span>
+      </div>`;
+    if (!d.topics.length) return head + '<div class="dim">nothing learned yet — grade a few decisions on the Today tab</div>';
+    return head + `<table style="width:100%;border-collapse:collapse">
+      <tr class="dim"><th style="text-align:left">topic</th><th style="width:44%">learned lean</th><th style="text-align:right">weight</th></tr>
+      ${d.topics.map(t => `<tr>
+        <td style="padding:4px 0"><code>${esc(t.topic)}</code></td>
+        <td>${barFor(t.drift)}</td>
+        <td style="text-align:right;color:${t.drift>=0?'var(--good)':'var(--bad)'}">${t.drift>=0?'+':''}${t.drift.toFixed(3)}</td>
+      </tr>`).join("")}
+    </table>`;
   },
   async tasks() {
     const ts = await api("/api/tasks");

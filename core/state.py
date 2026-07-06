@@ -245,6 +245,17 @@ class State:
         )
 
     # topic weights
+    async def all_topic_weights(self) -> list[tuple[str, dict]]:
+        """Learned per-topic weights for the console — internal markers and
+        dispatch-propensity rows excluded."""
+        rows = await self._db.execute_fetchall("SELECT topic, weights FROM topic_weights")
+        out = []
+        for topic, blob in rows:
+            if topic.startswith("__") or topic.startswith("dispatch::"):
+                continue
+            out.append((topic, json.loads(blob)))
+        return sorted(out)
+
     async def get_topic_weights(self, topic: str) -> dict | None:
         data = await self._get_data("SELECT weights FROM topic_weights WHERE topic=?", (topic,))
         return json.loads(data) if data else None
