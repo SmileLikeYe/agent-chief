@@ -35,7 +35,10 @@ def build_block() -> str:
         1 for r in results
         if r.decision.route == "interrupt" or r.entry.delivery == "interrupt"
     )
-    judged = sum(1 for r in results if r.decision.stage == 3)
+    judged_results = [
+        r for r in results if r.decision.stage == 3 and not r.decision.degraded
+    ]  # same "judged" definition as State.decision_stats
+    judged = len(judged_results)
     blocked = sum(1 for r in results if r.decision.route == "drop")
     interception = 1 - interrupts / total
     llm_share = judged / total
@@ -45,7 +48,6 @@ def build_block() -> str:
     # blocks are the real rendered templates — no hand-copied prompt strings.
     system_t = tokens(prompts.SYSTEM_PROMPT)
     context_t = tokens(prompts.context_block(JudgeContext(user_profile="engineer")))
-    judged_results = [r for r in results if r.decision.stage == 3]
     user_t = round(sum(
         tokens(prompts.user_block(
             r.event, JudgeContext(scene=r.scene.scene, scene_confidence=r.scene.confidence)

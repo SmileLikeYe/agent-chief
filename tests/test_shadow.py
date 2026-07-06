@@ -6,8 +6,13 @@ from datetime import UTC, datetime, timedelta
 from typer.testing import CliRunner
 
 from core.learner import ShadowMode, build_tact_report
-from core.schema import Decision
+from core.schema import Decision, Event
 from core.state import State
+
+
+def event(event_id, at):
+    return Event(id=event_id, source="t", topic="dev.ci",
+                 summary=f"seed {event_id}", received_at=at)
 
 T0 = datetime(2026, 7, 1, 9, 0, tzinfo=UTC)
 
@@ -69,6 +74,8 @@ async def test_tact_report_counts(tmp_path):
         now = T0 + timedelta(days=1)
         routes = ["drop"] * 5 + ["digest"] * 3 + ["dispatch"] * 2 + ["interrupt"] * 1
         for i, route in enumerate(routes):
+            # decisions always ride with their event row (Brain saves both)
+            await state.save_event(event(f"evt_{i}", now))
             await state.save_decision(decision(event_id=f"evt_{i}", route=route))
         await state.save_feedback("evt_a", "shadow_good", now)
         await state.save_feedback("evt_b", "shadow_good", now)

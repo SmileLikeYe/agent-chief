@@ -93,6 +93,5 @@ def user_block(event: Event, ctx: JudgeContext, version: str | None = None) -> s
     )
 
 
-# Rendered from the active version at import: the stable prompt-cache prefix.
-SYSTEM_PROMPT = render("system")
-RETRY_PROMPT = render("retry")
+# The stable prompt-cache prefix, via the same cache HTTPJudge uses.
+SYSTEM_PROMPT = render_static("system")

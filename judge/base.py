@@ -1,5 +1,6 @@
 """Implements SPEC §4.4 stage 3: judge backend interface and result model."""
 
+import json
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -118,16 +119,21 @@ class HTTPJudge:
         total = JudgeUsage()
         async with self._client() as client:
             for attempt in range(self.MAX_ATTEMPTS):
-                raw, usage = await self._complete(client, messages, retry=attempt > 0)
+                try:
+                    raw, usage = await self._complete(client, messages, retry=attempt > 0)
+                except Exception as exc:
+                    # transport failure mid-retry: tokens already paid still bill
+                    raise JudgeError(
+                        f"{self.name}: transport failure on attempt {attempt + 1}: {exc}",
+                        usage=total,
+                    ) from exc
                 total = JudgeUsage(
                     tokens_in=total.tokens_in + usage.tokens_in,
                     tokens_out=total.tokens_out + usage.tokens_out,
                     cached_tokens=total.cached_tokens + usage.cached_tokens,
                 )
                 try:
-                    import json as json_mod
-
-                    data = json_mod.loads(extract_json(raw))
+                    data = json.loads(extract_json(raw))
                     if isinstance(data, dict):
                         data.pop("usage", None)  # transport-owned; never trust the LLM's echo
                     result = JudgeResult.model_validate(data)

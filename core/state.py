@@ -170,9 +170,13 @@ class State:
             (Event.model_validate_json(r[0]), Decision.model_validate_json(r[1])) for r in rows
         ]
 
-    async def route_counts(self) -> dict[str, int]:
+    async def route_counts(self, since=None) -> dict[str, int]:
+        where = "WHERE e.received_at >= ?" if since else ""
+        params = (since.isoformat(),) if since else ()
         rows = await self._db.execute_fetchall(
-            "SELECT route, COUNT(*) FROM decisions GROUP BY route"
+            "SELECT d.route, COUNT(*) FROM decisions d"
+            f" JOIN events e ON e.id = d.event_id {where} GROUP BY d.route",
+            params,
         )
         return {r[0]: r[1] for r in rows}
 

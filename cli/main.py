@@ -47,8 +47,9 @@ def eval_cmd(
 
         llm = load_config().get("llm", {})
         # configured model/base_url/api_key belong to the configured backend
-        # only — for any other --backend, start from that provider's defaults
-        cfg = dict(llm) if llm.get("backend") == backend else {}
+        # only — for a DIFFERENT --backend, start from that provider's
+        # defaults; a config with no backend key applies to whatever runs
+        cfg = dict(llm) if llm.get("backend") in (None, backend) else {}
         cfg["backend"] = backend
         if prompt_version:
             cfg["prompt_version"] = prompt_version
@@ -74,8 +75,18 @@ def eval_cmd(
             )
         return
 
+    def warn_if_blind(report):
+        broken = sum(1 for r in report.results if r.decision.degraded)
+        if broken:
+            console.print(
+                f"[yellow]warning[/yellow]: {broken}/{report.total} judge calls failed "
+                "and were routed conservatively — check credentials/backend before "
+                "trusting this agreement number"
+            )
+
     judge = build_judge()
     regression = run_regression(judge)
+    warn_if_blind(regression)
     path = write_report(regression, out_dir)
     tone = "green" if regression.agreement == 1.0 else "red"
     console.print(
@@ -85,6 +96,7 @@ def eval_cmd(
     if regression.agreement < 1.0:
         raise typer.Exit(code=1)  # regression must stay 100%; don't pay for capability
     capability = run_capability(judge)
+    warn_if_blind(capability)
     path = write_report(capability, out_dir)
     console.print(
         f"[green]capability[/green] agreement "

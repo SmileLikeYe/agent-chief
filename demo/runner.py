@@ -124,8 +124,9 @@ def replay(fixture: Fixture, judge=None) -> list[ReplayResult]:
             ][:3]
             try:
                 result = asyncio.run(judge.judge(event, None))
+            except LookupError:
+                raise  # missing fixture judge block = broken fixture: fail loud
             except Exception as exc:  # one flaky case must not abort a paid eval run
-                result = None
                 decision = Decision(
                     event_id=event.id,
                     route="digest",  # mirror production degradation (Step 28)
@@ -136,7 +137,7 @@ def replay(fixture: Fixture, judge=None) -> list[ReplayResult]:
                     stage=3,
                     degraded=True,
                 )
-            if result is not None:
+            else:
                 route, score, comps, reason = score_and_route(
                     result, scene, memory_hit=bool(memory_hits)
                 )
@@ -151,8 +152,8 @@ def replay(fixture: Fixture, judge=None) -> list[ReplayResult]:
                     reason=reason,
                     stage=3,
                 )
-            if result is not None and decision.route == "curate" and result.memorize:
-                memory.append((result.memorize, DEFAULT_EMBEDDER.embed(result.memorize)))
+                if route == "curate" and result.memorize:
+                    memory.append((result.memorize, DEFAULT_EMBEDDER.embed(result.memorize)))
 
         if event.dedup_key:
             seen_dedup.add(event.dedup_key)

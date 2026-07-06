@@ -18,7 +18,8 @@ from core.state import AuditLog, State
 from delivery.base import DeliveryMessage
 from dispatch.acceptance import AskFn, dispatch_and_verify
 from dispatch.executor import Executor
-from judge.base import Judge, JudgeContext
+from judge.base import Judge, JudgeContext, JudgeUsage
+from judge.pricing import usd_cost
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,24 @@ class Brain:
         self.now_fn = now_fn
         self.judge_timeout = judge_timeout
         self._degraded: bool | None = None  # None = unknown until first judgment
+        self._last_error: str | None = None
+
+    def _bill(self, backend: str, usage: JudgeUsage | None) -> float:
+        if not usage:
+            return 0.0
+        return usd_cost(
+            backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens,
+            model=getattr(self.judge, "model", None),
+        )
+
+    def _usage_trace(self, clock: _StageClock, backend: str, usage) -> DecisionTrace:
+        return DecisionTrace(
+            stages=clock.stages,
+            tokens_in=usage.tokens_in if usage else 0,
+            tokens_out=usage.tokens_out if usage else 0,
+            cached_tokens=usage.cached_tokens if usage else 0,
+            backend=backend,
+        )
 
     def _scene(self, now: datetime) -> SceneState:
         if self.scene_engine:
@@ -231,42 +250,35 @@ class Brain:
             )
         except Exception as exc:  # malformed output, timeout, backend down — never crash
             logger.warning("judge %s unavailable (%s); degrading to rules-only", backend, exc)
-            if self._degraded is not True:  # write only on the healthy→degraded transition
+            last_error = f"{type(exc).__name__}: {exc}"[:200]
+            if self._degraded is not True or last_error != self._last_error:
+                # transition or changed failure mode: refresh the marker, but
+                # preserve `since` from any still-active record (incl. one
+                # written before a daemon restart mid-outage)
+                current = await load_degraded(self.state)
                 await self.state.set_meta(
                     DEGRADED_KEY,
                     {
                         "active": True,
-                        "since": now.isoformat(),
-                        "last_error": f"{type(exc).__name__}: {exc}"[:200],
+                        "since": current["since"] if current else now.isoformat(),
+                        "last_error": last_error,
                     },
                 )
-                self._degraded = True
+                self._degraded, self._last_error = True, last_error
             clock.mark("judge", note=f"FAILED: {type(exc).__name__}")
             # retries that failed were still paid for — bill them (JudgeError.usage)
             usage = getattr(exc, "usage", None)
-            from judge.pricing import usd_cost
-
-            cost = usd_cost(
-                backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens,
-                model=getattr(self.judge, "model", None),
-            ) if usage else 0.0
             return Decision(
                 event_id=event.id,
                 route="digest",  # conservative: never interrupt, never drop, while blind
                 scene=scene.scene,
                 scene_confidence=scene.confidence,
-                cost=cost,
+                cost=self._bill(backend, usage),
                 reason=f"judge unavailable ({type(exc).__name__}); "
                 "conservative rules-only routing to digest",
                 stage=3,
                 degraded=True,
-                trace=DecisionTrace(
-                    stages=clock.stages,
-                    tokens_in=usage.tokens_in if usage else 0,
-                    tokens_out=usage.tokens_out if usage else 0,
-                    cached_tokens=usage.cached_tokens if usage else 0,
-                    backend=backend,
-                ),
+                trace=self._usage_trace(clock, backend, usage),
             )
         if self._degraded is not False:  # recovery (or first success): clear marker once
             await self.state.set_meta(DEGRADED_KEY, {"active": False})
@@ -302,26 +314,16 @@ class Brain:
             task_id = task.id
 
         from judge import prompts
-        from judge.pricing import usd_cost
 
         usage = result.usage
-        cost = usd_cost(
-            backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens,
-            model=getattr(self.judge, "model", None),
-        ) if usage else 0.0
+        cost = self._bill(backend, usage)
         # only judges that render prompts (declare prompt_version) get stamped;
         # None on such a judge means "the active version" (fixtures stay None)
         _missing = object()
         declared = getattr(self.judge, "prompt_version", _missing)
         version = None if declared is _missing else (declared or prompts.PROMPT_VERSION)
-        trace = DecisionTrace(
-            stages=clock.stages,
-            tokens_in=usage.tokens_in if usage else 0,
-            tokens_out=usage.tokens_out if usage else 0,
-            cached_tokens=usage.cached_tokens if usage else 0,
-            backend=backend,
-            prompt_version=version,
-        )
+        trace = self._usage_trace(clock, backend, usage)
+        trace.prompt_version = version
         return Decision(
             event_id=event.id,
             route=route,  # type: ignore[arg-type]

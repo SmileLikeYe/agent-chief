@@ -16,24 +16,27 @@ PRICES: dict[str, dict[str, float]] = {
     "fixtures": {"input_cache_miss": 0.0, "input_cache_hit": 0.0, "output": 0.0},
 }
 
-# model-level list prices, matched by longest prefix — a backend serves many
-# models at very different rates (gpt-4o vs gpt-4o-mini is ~17x)
-MODEL_PRICES: dict[str, dict[str, float]] = {
-    "deepseek-chat": {"input_cache_miss": 0.27, "input_cache_hit": 0.07, "output": 1.10},
-    "gpt-4o-mini": {"input_cache_miss": 0.15, "input_cache_hit": 0.075, "output": 0.60},
-    "gpt-4o": {"input_cache_miss": 2.50, "input_cache_hit": 1.25, "output": 10.00},
-    "claude-haiku": {"input_cache_miss": 1.00, "input_cache_hit": 0.10, "output": 5.00},
-    "claude-sonnet": {"input_cache_miss": 3.00, "input_cache_hit": 0.30, "output": 15.00},
-    "claude-opus": {"input_cache_miss": 15.00, "input_cache_hit": 1.50, "output": 75.00},
-}
+# model-level list prices, matched by ordered substring — real model ids vary
+# ("claude-3-5-haiku-20241022", "claude-haiku-4-5", …) so anchored prefixes
+# miss them; a backend serves many models at very different rates
+# (gpt-4o vs gpt-4o-mini is ~17x)
+MODEL_PRICES: list[tuple[str, dict[str, float]]] = [
+    ("deepseek-reasoner", {"input_cache_miss": 0.55, "input_cache_hit": 0.14, "output": 2.19}),
+    ("deepseek", {"input_cache_miss": 0.27, "input_cache_hit": 0.07, "output": 1.10}),
+    ("gpt-4o-mini", {"input_cache_miss": 0.15, "input_cache_hit": 0.075, "output": 0.60}),
+    ("gpt-4o", {"input_cache_miss": 2.50, "input_cache_hit": 1.25, "output": 10.00}),
+    ("haiku", {"input_cache_miss": 1.00, "input_cache_hit": 0.10, "output": 5.00}),
+    ("sonnet", {"input_cache_miss": 3.00, "input_cache_hit": 0.30, "output": 15.00}),
+    ("opus", {"input_cache_miss": 15.00, "input_cache_hit": 1.50, "output": 75.00}),
+]
 _FREE = PRICES["fixtures"]
 
 
 def _table(backend: str, model: str | None) -> dict[str, float]:
     if model:
-        for prefix in sorted(MODEL_PRICES, key=len, reverse=True):
-            if model.startswith(prefix):
-                return MODEL_PRICES[prefix]
+        for needle, table in MODEL_PRICES:  # ordered: most specific first
+            if needle in model:
+                return table
     return PRICES.get(backend, _FREE)
 
 

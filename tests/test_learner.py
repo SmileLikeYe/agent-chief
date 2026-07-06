@@ -155,6 +155,8 @@ async def test_daily_threshold_tuning_persists_adjust(tmp_path):
     async with State.open(tmp_path / "s.db") as state:
         # 10 interrupts, 6 dismissed fast (60% > 40%) → +0.02
         for i in range(10):
+            await state.save_event(Event(id=f"evt_{i}", source="t", topic="dev.ci",
+                                         summary=f"seed {i}", received_at=NOW))
             d = decision()
             await state.save_decision(d.model_copy(update={"event_id": f"evt_{i}"}))
         for i in range(6):

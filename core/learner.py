@@ -133,7 +133,7 @@ async def daily_threshold_tuning(state: State, *, now: datetime) -> float:
     """SPEC §4.6: 7-day interrupt dismissed_fast ratio >40% → +0.02/day,
     <15% → −0.01/day. Persists and returns the new global adjustment."""
     since = now - timedelta(days=7)
-    interrupts = (await state.route_counts()).get("interrupt", 0)
+    interrupts = (await state.route_counts(since=since)).get("interrupt", 0)
     dismissed = await state.count_feedback(signal="dismissed_fast", since=since)
     adjust = await load_threshold_adjust(state)
     if interrupts > 0:
@@ -200,8 +200,8 @@ class TactReport:
 
 
 async def build_tact_report(state: State, *, days: int, now: datetime) -> TactReport:
-    counts = await state.route_counts()
     since = now - timedelta(days=days)
+    counts = await state.route_counts(since=since)
     good = await state.count_feedback(signal="shadow_good", since=since)
     bad = await state.count_feedback(signal="shadow_bad", since=since)
     stats = await state.decision_stats(since=since)
