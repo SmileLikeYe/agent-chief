@@ -134,6 +134,52 @@ def trace(event_id: str = typer.Argument(..., help="Event id, e.g. evt_20260706_
 
 
 @app.command()
+def lite(
+    event_json: str = typer.Argument(
+        None, help="Candidate event as JSON; omit to read from stdin."
+    ),
+):
+    """Judgment only (SPEC v3.1 Step 29): stages 1-3 + routing, no learner,
+    no delivery daemon, no persistence. Prints the Decision as JSON.
+
+    Zero-config behavior is conservative: without a configured LLM backend the
+    judge is unavailable, so anything stage-1 lets through routes to digest
+    with degraded=true — never interrupt, never silently drop.
+    """
+    import asyncio
+    import json
+    import sys
+
+    from core.brain import Brain
+    from core.config import load_config, policy_path
+    from core.state import State
+    from judge.factory import make_judge
+
+    raw = event_json if event_json else sys.stdin.read()
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        typer.echo(f"invalid event JSON: {exc}", err=True)
+        raise typer.Exit(code=2) from None
+
+    async def _judge_once():
+        cfg = load_config()
+        judge = make_judge(cfg.get("llm", {}))
+        async with State.open(":memory:") as state:
+            brain = Brain(
+                state,
+                judge,
+                policy_path=policy_path(),
+                quiet_hours=cfg.get("quiet", {}).get("hours", "23:00-08:00"),
+                night_whitelist=cfg.get("quiet", {}).get("whitelist"),
+            )
+            return await brain.process(payload)
+
+    decision = asyncio.run(_judge_once())
+    typer.echo(decision.model_dump_json())
+
+
+@app.command()
 def init(
     defaults: bool = typer.Option(
         False, "--defaults", help="Accept all defaults, ask nothing."

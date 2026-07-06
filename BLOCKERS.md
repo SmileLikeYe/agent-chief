@@ -20,3 +20,12 @@ Log of steps that needed human-only resources; implemented against mocks/fixture
   `[llm].api_key` set in ~/.chief/config.toml; for prompt changes,
   `chief eval --compare v1 v2 --backend deepseek` and attach the report per
   CONTRIBUTING.md.
+
+## Step 29 · Dual skill packaging — live-host halves (v3.1)
+- Status: both SKILL.md files lint clean; `chief lite` transcripts in
+  docs/skill-manual-tests.md are real output. The live halves need hosts this
+  machine doesn't have: a local OpenClaw install (see Step 22 entry) and a
+  Claude Code session with the skill loaded and API credentials.
+- Un-mock: copy skills/claude-code/ into a project's .claude/skills/, run a
+  watcher that finds something, verify the agent calls `chief lite` and obeys
+  the route; for OpenClaw follow docs/openclaw-manual-test.md.

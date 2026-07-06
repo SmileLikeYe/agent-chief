@@ -67,3 +67,4 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-05 · Degradation state lives under the "__degraded__" key in the topic_weights kv table (same pattern as __shadow__/__threshold_adjust__) so `chief status` sees it across processes; recovery clears it on the next successful judgment.
 - 2026-07-05 · The Brain wraps every judge call in asyncio.wait_for(judge_timeout=60s) and catches all exceptions — HTTPJudge's own timeout/retry stays, this is the outer safety net.
 - 2026-07-05 · review(phase5): eval reports fall back to ~/.chief/eval-reports when the package dir is read-only (installed wheel); verified `chief eval` and `chief demo` run from the built wheel via uvx; real-backend eval logged in BLOCKERS.
+- 2026-07-05 · chief lite reuses the full Brain against an in-memory SQLite state rather than a parallel code path — zero-config safety comes from Step 28 degradation (rules fire, judge absent → digest + degraded), no second routing implementation to keep in sync.
