@@ -13,15 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # tags needed; fetch-tags+shallow is unreliable (actions/checkout#1467)
       - name: Upsert a release per changelog version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for version in $(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md); do
             tag="v$version"
-            git rev-parse -q --verify "refs/tags/$tag" >/dev/null || continue
+            # tag existence is a remote fact — never trust the local checkout
+            gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$tag" >/dev/null || {
+              echo "no tag $tag on the remote; skipping"; continue; }
             awk -v v="$version" '
               $0 ~ "^## \\[" v "\\]" {hit=1; next}
               hit && /^## \[/ {exit}
