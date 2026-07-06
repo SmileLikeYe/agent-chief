@@ -1,4 +1,18 @@
-# Release checklist — v0.1.0
+# Release checklist — v0.2.0
+
+## Pre-flight (automated)
+- [x] `make release-check` — lint + tests + build + demo runs from the built wheel
+- [x] CHANGELOG.md entry for v0.2.0
+- [x] Git tag `v0.2.0` → the Release workflow builds, re-verifies, and attaches dist/*
+- [x] GitHub releases published for v0.1.0 (retro) and v0.2.0 (latest)
+
+## Publish (needs human credentials)
+- [ ] Test PyPI: `uv publish --index testpypi`, verify `uvx agent-chief demo`
+- [ ] Real PyPI: `uv publish` (name `agent-chief` confirmed free on 2026-07-04)
+
+---
+
+# Release checklist — v0.1.0 (shipped 2026-07-04)
 
 ## Pre-flight (automated)
 - [x] `make release-check` — lint + tests + build + demo runs from the built wheel

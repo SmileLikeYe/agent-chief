@@ -1,6 +1,6 @@
 [project]
 name = "agent-chief"
-version = "0.1.0"
+version = "0.2.0"
 description = "Chief — the chief of staff for your agents and information sources"
 readme = "README.md"
 requires-python = ">=3.12"

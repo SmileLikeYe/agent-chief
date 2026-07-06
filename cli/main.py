@@ -9,6 +9,26 @@ app = typer.Typer(
 )
 
 
+def _version(show: bool):
+    if show:
+        from importlib.metadata import PackageNotFoundError, version
+
+        try:
+            typer.echo(f"chief {version('agent-chief')}")
+        except PackageNotFoundError:
+            typer.echo("chief (source checkout)")
+        raise typer.Exit()
+
+
+@app.callback()
+def _main(
+    version: bool = typer.Option(
+        False, "--version", callback=_version, is_eager=True, help="Show version and exit."
+    ),
+):
+    """Chief — the chief of staff for your agents and information sources."""
+
+
 @app.command()
 def demo(fast: bool = typer.Option(False, "--fast", help="Replay without delays (for tests).")):
     """Offline replay of a day in the life of an engineer (SPEC §4.7)."""
