@@ -247,8 +247,7 @@ add("16:05", "idle", 0.8,
 
 
 def main() -> None:
-    from demo.runner import replay
-    from eval.runner import GOLDEN_PATH, load_golden
+    from eval.runner import GOLDEN_PATH, run_capability
 
     meta = {"type": "meta", "date": DATE, "quiet_hours": QUIET,
             "night_whitelist": WHITELIST, "policy": POLICY}
@@ -257,8 +256,7 @@ def main() -> None:
     Path(GOLDEN_PATH).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     # verify every label against the real pipeline before accepting the file
-    results = replay(load_golden())
-    bad = [r for r in results if r.decision.route != r.entry.expected_route]
+    bad = run_capability().mismatches
     for r in bad:
         print(f"LABEL MISMATCH {r.event.id}: expected {r.entry.expected_route}, "
               f"pipeline says {r.decision.route} ({r.decision.reason})")

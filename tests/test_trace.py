@@ -68,7 +68,7 @@ async def test_stage1_decision_has_trace_without_judge(tmp_path):
         assert t is not None
         names = [s.stage for s in t.stages]
         assert "stage1" in names and "judge" not in names
-        assert t.usd_cost == 0.0
+        assert decision.cost == 0.0  # Decision.cost is the single cost source
         assert all(s.ms >= 0 for s in t.stages)
 
 
@@ -100,8 +100,9 @@ async def test_http_judge_usage_flows_into_trace_cost(tmp_path):
         decision = await brain.process(dict(PAYLOAD))
         t = decision.trace
         assert (t.tokens_in, t.tokens_out, t.cached_tokens) == (1000, 100, 600)
-        assert t.usd_cost == pytest.approx(usd_cost("deepseek", 1000, 100, 600))
-        assert decision.cost == pytest.approx(t.usd_cost)
+        assert decision.cost == pytest.approx(
+            usd_cost("deepseek", 1000, 100, 600, model="deepseek-chat")
+        )
 
 
 # --- chief trace CLI -----------------------------------------------------------

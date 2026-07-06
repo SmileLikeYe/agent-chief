@@ -23,30 +23,13 @@ from judge.base import Judge, JudgeContext
 logger = logging.getLogger(__name__)
 
 DISPATCH_TIMEOUT_SECONDS = 600.0  # 10 minutes
-DEGRADED_KEY = "__degraded__"  # degradation marker in the topic_weights kv table (Step 28)
+DEGRADED_KEY = "degraded"  # degradation marker in the meta kv table (Step 28)
 
 
 async def load_degraded(state: State) -> dict | None:
     """Current degradation info ({'since','last_error'}) or None when healthy."""
-    info = await state.get_topic_weights(DEGRADED_KEY)
+    info = await state.get_meta(DEGRADED_KEY)
     return info if info and info.get("active") else None
-
-
-async def _set_degraded(state: State, error: Exception, now: datetime) -> None:
-    current = await load_degraded(state)
-    await state.set_topic_weights(
-        DEGRADED_KEY,
-        {
-            "active": True,
-            "since": current["since"] if current else now.isoformat(),
-            "last_error": f"{type(error).__name__}: {error}"[:200],
-        },
-    )
-
-
-async def _clear_degraded(state: State) -> None:
-    if await load_degraded(state):
-        await state.set_topic_weights(DEGRADED_KEY, {"active": False})
 
 
 class _StageClock:
@@ -84,7 +67,7 @@ class Brain:
         embedder=None,
         actor: Callable | None = None,
         now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
-        judge_timeout: float = 60.0,
+        judge_timeout: float = 150.0,  # > HTTPJudge worst case (2 attempts x 60s) + slack
     ):
         self.state = state
         self.judge = judge
@@ -103,6 +86,7 @@ class Brain:
         self.actor = actor  # async (Event, Decision) -> None; delivery/dispatch side
         self.now_fn = now_fn
         self.judge_timeout = judge_timeout
+        self._degraded: bool | None = None  # None = unknown until first judgment
 
     def _scene(self, now: datetime) -> SceneState:
         if self.scene_engine:
@@ -130,11 +114,13 @@ class Brain:
             recent = await self.state.recent_events(now - timedelta(minutes=10))
             prior = find_mergeable(event, [e for e in recent if e.id != event.id],
                                    embedder=self.embedder)
+            clock.mark("triage_merge", note="merged into prior" if prior else "no near-duplicate")
             if prior:
                 merged = merge_events(prior, event)
                 await self.state.save_event(merged)
                 existing = await self.state.load_decision(prior.id)
                 if existing:
+                    # the prior decision (and its trace) stands for the merged event
                     return existing.model_copy(
                         update={"reason": existing.reason + "; merged near-duplicate"}
                     )
@@ -245,21 +231,46 @@ class Brain:
             )
         except Exception as exc:  # malformed output, timeout, backend down — never crash
             logger.warning("judge %s unavailable (%s); degrading to rules-only", backend, exc)
-            await _set_degraded(self.state, exc, now)
+            if self._degraded is not True:  # write only on the healthy→degraded transition
+                await self.state.set_meta(
+                    DEGRADED_KEY,
+                    {
+                        "active": True,
+                        "since": now.isoformat(),
+                        "last_error": f"{type(exc).__name__}: {exc}"[:200],
+                    },
+                )
+                self._degraded = True
             clock.mark("judge", note=f"FAILED: {type(exc).__name__}")
+            # retries that failed were still paid for — bill them (JudgeError.usage)
+            usage = getattr(exc, "usage", None)
+            from judge.pricing import usd_cost
+
+            cost = usd_cost(
+                backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens,
+                model=getattr(self.judge, "model", None),
+            ) if usage else 0.0
             return Decision(
                 event_id=event.id,
                 route="digest",  # conservative: never interrupt, never drop, while blind
                 scene=scene.scene,
                 scene_confidence=scene.confidence,
-                cost=0.0,
+                cost=cost,
                 reason=f"judge unavailable ({type(exc).__name__}); "
                 "conservative rules-only routing to digest",
                 stage=3,
                 degraded=True,
-                trace=DecisionTrace(stages=clock.stages, backend=backend),
+                trace=DecisionTrace(
+                    stages=clock.stages,
+                    tokens_in=usage.tokens_in if usage else 0,
+                    tokens_out=usage.tokens_out if usage else 0,
+                    cached_tokens=usage.cached_tokens if usage else 0,
+                    backend=backend,
+                ),
             )
-        await _clear_degraded(self.state)
+        if self._degraded is not False:  # recovery (or first success): clear marker once
+            await self.state.set_meta(DEGRADED_KEY, {"active": False})
+            self._degraded = False
         clock.mark("judge", note=f"backend {backend}")
         weights = await self.state.get_topic_weights(event.topic)
         from core.learner import load_threshold_adjust
@@ -295,16 +306,21 @@ class Brain:
 
         usage = result.usage
         cost = usd_cost(
-            backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens
+            backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens,
+            model=getattr(self.judge, "model", None),
         ) if usage else 0.0
+        # only judges that render prompts (declare prompt_version) get stamped;
+        # None on such a judge means "the active version" (fixtures stay None)
+        _missing = object()
+        declared = getattr(self.judge, "prompt_version", _missing)
+        version = None if declared is _missing else (declared or prompts.PROMPT_VERSION)
         trace = DecisionTrace(
             stages=clock.stages,
             tokens_in=usage.tokens_in if usage else 0,
             tokens_out=usage.tokens_out if usage else 0,
             cached_tokens=usage.cached_tokens if usage else 0,
-            usd_cost=cost,
             backend=backend,
-            prompt_version=getattr(self.judge, "prompt_version", None) or prompts.PROMPT_VERSION,
+            prompt_version=version,
         )
         return Decision(
             event_id=event.id,
@@ -319,6 +335,32 @@ class Brain:
             dispatch_task_id=task_id,
             trace=trace,
         )
+
+
+async def judge_once(payload: dict, config: dict | None = None) -> Decision:
+    """One-shot judgment against an in-memory state (SPEC v3.1 Step 29).
+
+    The single implementation behind `chief lite` and the integration
+    examples: stages 1-3 + routing, no learner, no delivery daemon, no
+    persistence. Honors [llm] and [quiet] from config so results match the
+    resident daemon; with no backend configured, Step 28 degradation keeps it
+    conservative (rules fire, the rest goes to digest with degraded=true).
+    """
+    from core.config import load_config, policy_path
+    from judge.factory import make_judge
+
+    cfg = config if config is not None else load_config()
+    judge = make_judge(cfg.get("llm", {}))
+    quiet = cfg.get("quiet", {})
+    async with State.open(":memory:") as state:
+        brain = Brain(
+            state,
+            judge,
+            policy_path=policy_path(),
+            quiet_hours=quiet.get("hours", "23:00-08:00"),
+            night_whitelist=quiet.get("whitelist"),
+        )
+        return await brain.process(payload)
 
 
 async def prepare_delivery(

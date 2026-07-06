@@ -136,9 +136,16 @@ class CompareReport:
         return self.b.agreement - self.a.agreement
 
 
-def run_compare(judge_a, judge_b, path: str | Path = GOLDEN_PATH) -> CompareReport:
-    ra = run_capability(judge_a, path)
-    rb = run_capability(judge_b, path)
+def run_compare(
+    judge_a,
+    judge_b,
+    path: str | Path = GOLDEN_PATH,
+    version_a: str | None = None,
+    version_b: str | None = None,
+) -> CompareReport:
+    fixture = load_golden(path)  # parse once, replay twice
+    ra = EvalReport(kind="capability", backend=_name(judge_a), results=replay(fixture, judge_a))
+    rb = EvalReport(kind="capability", backend=_name(judge_b), results=replay(fixture, judge_b))
     flipped = [
         (a.entry, a.decision.route, b.decision.route)
         for a, b in zip(ra.results, rb.results, strict=True)
@@ -147,8 +154,8 @@ def run_compare(judge_a, judge_b, path: str | Path = GOLDEN_PATH) -> CompareRepo
     return CompareReport(
         a=ra,
         b=rb,
-        version_a=getattr(judge_a, "prompt_version", None) or "A",
-        version_b=getattr(judge_b, "prompt_version", None) or "B",
+        version_a=version_a or getattr(judge_a, "prompt_version", None) or "A",
+        version_b=version_b or getattr(judge_b, "prompt_version", None) or "B",
         flipped=flipped,
     )
 

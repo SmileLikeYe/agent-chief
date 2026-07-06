@@ -204,7 +204,7 @@ async def build_tact_report(state: State, *, days: int, now: datetime) -> TactRe
     since = now - timedelta(days=days)
     good = await state.count_feedback(signal="shadow_good", since=since)
     bad = await state.count_feedback(signal="shadow_bad", since=since)
-    stats = await state.decision_stats()
+    stats = await state.decision_stats(since=since)
     return TactReport(
         days=days,
         events_in=sum(counts.values()),

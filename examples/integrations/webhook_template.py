@@ -41,16 +41,10 @@ def propose_via_webhook(payload: dict) -> dict | None:
 
 
 async def propose_in_process(payload: dict) -> dict:
-    """Transport 2: judgment-only, no daemon (what `chief lite` does)."""
-    from core.brain import Brain
-    from core.config import load_config, policy_path
-    from core.state import State
-    from judge.factory import make_judge
+    """Transport 2: judgment-only, no daemon — literally what `chief lite` runs."""
+    from core.brain import judge_once
 
-    cfg = load_config()
-    async with State.open(":memory:") as state:
-        brain = Brain(state, make_judge(cfg.get("llm", {})), policy_path=policy_path())
-        return json.loads((await brain.process(payload)).model_dump_json())
+    return json.loads((await judge_once(payload)).model_dump_json())
 
 
 def obey(decision: dict) -> None:

@@ -14,26 +14,19 @@ import asyncio
 import json
 from pathlib import Path
 
-from core.brain import Brain
-from core.config import load_config, policy_path
-from core.state import State
-from judge.factory import make_judge
+from core.brain import judge_once
 
 FEED = json.loads((Path(__file__).parent / "stock_feed.json").read_text(encoding="utf-8"))
 
 
 async def main() -> None:
-    cfg = load_config()
-    judge = make_judge(cfg.get("llm", {}))
-    async with State.open(":memory:") as state:
-        brain = Brain(state, judge, policy_path=policy_path())
-        print(f"{len(FEED)} analyst-bot reports in →\n")
-        for payload in FEED:
-            decision = await brain.process(dict(payload))
-            mark = "🗑" if decision.route == "drop" else "📰"
-            print(f"{mark} {payload['summary'][:66]:66} → {decision.route:8} "
-                  f"({decision.reason[:60]})")
-        print("\nThe user saw none of this directly — the digest gets the survivors.")
+    print(f"{len(FEED)} analyst-bot reports in →\n")
+    for payload in FEED:
+        decision = await judge_once(dict(payload))  # the same pipeline `chief lite` runs
+        mark = "🗑" if decision.route == "drop" else "📰"
+        print(f"{mark} {payload['summary'][:66]:66} → {decision.route:8} "
+              f"({decision.reason[:60]})")
+    print("\nThe user saw none of this directly — the digest gets the survivors.")
 
 
 if __name__ == "__main__":

@@ -9,6 +9,13 @@ from core.schema import Event, new_event_id
 from judge.prompts import topic_infer_prompt
 
 
+def _safe_topic(topic: str) -> str:
+    """Dunder-style topics are reserved for internal kv markers (__shadow__,
+    __threshold_adjust__); externally supplied ones get namespaced away."""
+    return f"ext.{topic.strip('_')}" if topic.startswith("__") else topic
+
+
+
 class TopicInferrer:
     """Cheap LLM topic inference, cached by summary; degrades to `{source}.misc`."""
 
@@ -44,4 +51,5 @@ async def normalize(
     if not data.get("topic"):
         inferrer = inferrer or TopicInferrer()
         data["topic"] = await inferrer.infer(data.get("summary", ""), data.get("source", "unknown"))
+    data["topic"] = _safe_topic(str(data["topic"]))
     return Event.model_validate(data)

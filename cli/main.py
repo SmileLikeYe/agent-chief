@@ -45,7 +45,11 @@ def eval_cmd(
         from core.config import load_config
         from judge.factory import make_judge
 
-        cfg = {**load_config().get("llm", {}), "backend": backend}
+        llm = load_config().get("llm", {})
+        # configured model/base_url/api_key belong to the configured backend
+        # only — for any other --backend, start from that provider's defaults
+        cfg = dict(llm) if llm.get("backend") == backend else {}
+        cfg["backend"] = backend
         if prompt_version:
             cfg["prompt_version"] = prompt_version
         return make_judge(cfg)
@@ -54,9 +58,10 @@ def eval_cmd(
 
     if compare[0] and compare[1]:
         version_a, version_b = compare
-        report = run_compare(build_judge(version_a), build_judge(version_b))
-        # fixture backend ignores prompts; keep the requested labels on the report
-        report.version_a, report.version_b = version_a, version_b
+        report = run_compare(
+            build_judge(version_a), build_judge(version_b),
+            version_a=version_a, version_b=version_b,
+        )
         path = write_compare_report(report, out_dir)
         console.print(
             f"compare {version_a} vs {version_b}: delta {report.delta:+.1%}, "
@@ -70,15 +75,21 @@ def eval_cmd(
         return
 
     judge = build_judge()
-    for report in (run_regression(judge), run_capability(judge)):
-        path = write_report(report, out_dir)
-        tone = "green" if report.kind == "capability" or report.agreement == 1.0 else "red"
-        console.print(
-            f"[{tone}]{report.kind}[/{tone}] agreement "
-            f"{report.agreement:.1%} ({report.agreed}/{report.total}) → {path}"
-        )
-        if report.kind == "regression" and report.agreement < 1.0:
-            raise typer.Exit(code=1)  # regression must stay 100%
+    regression = run_regression(judge)
+    path = write_report(regression, out_dir)
+    tone = "green" if regression.agreement == 1.0 else "red"
+    console.print(
+        f"[{tone}]regression[/{tone}] agreement "
+        f"{regression.agreement:.1%} ({regression.agreed}/{regression.total}) → {path}"
+    )
+    if regression.agreement < 1.0:
+        raise typer.Exit(code=1)  # regression must stay 100%; don't pay for capability
+    capability = run_capability(judge)
+    path = write_report(capability, out_dir)
+    console.print(
+        f"[green]capability[/green] agreement "
+        f"{capability.agreement:.1%} ({capability.agreed}/{capability.total}) → {path}"
+    )
 
 
 @app.command()
@@ -127,10 +138,10 @@ def trace(event_id: str = typer.Argument(..., help="Event id, e.g. evt_20260706_
         console.print(
             f"tokens: {t.tokens_in} in ({t.cached_tokens} cached) / {t.tokens_out} out · "
             f"backend {t.backend or '—'} · prompt {t.prompt_version or '—'} · "
-            f"cost ${t.usd_cost:.6f}"
+            f"cost ${decision.cost:.6f}"
         )
     else:
-        console.print("[dim]no trace recorded (pre-v3.1 decision)[/dim] $0")
+        console.print("[dim]no trace recorded (pre-v3.1 decision)[/dim]")
 
 
 @app.command()
@@ -150,11 +161,6 @@ def lite(
     import json
     import sys
 
-    from core.brain import Brain
-    from core.config import load_config, policy_path
-    from core.state import State
-    from judge.factory import make_judge
-
     raw = event_json if event_json else sys.stdin.read()
     try:
         payload = json.loads(raw)
@@ -162,20 +168,9 @@ def lite(
         typer.echo(f"invalid event JSON: {exc}", err=True)
         raise typer.Exit(code=2) from None
 
-    async def _judge_once():
-        cfg = load_config()
-        judge = make_judge(cfg.get("llm", {}))
-        async with State.open(":memory:") as state:
-            brain = Brain(
-                state,
-                judge,
-                policy_path=policy_path(),
-                quiet_hours=cfg.get("quiet", {}).get("hours", "23:00-08:00"),
-                night_whitelist=cfg.get("quiet", {}).get("whitelist"),
-            )
-            return await brain.process(payload)
+    from core.brain import judge_once
 
-    decision = asyncio.run(_judge_once())
+    decision = asyncio.run(judge_once(payload))
     typer.echo(decision.model_dump_json())
 
 

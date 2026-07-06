@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from eval.runner import run_regression  # noqa: E402
 from judge import prompts  # noqa: E402
-from judge.pricing import PRICES  # noqa: E402
+from judge.base import JudgeContext  # noqa: E402
+from judge.pricing import usd_cost  # noqa: E402
 
 README = Path(__file__).parent.parent / "README.md"
 MARKER = re.compile(r"(<!-- metrics:start -->\n).*?(<!-- metrics:end -->)", re.DOTALL)
@@ -40,17 +41,22 @@ def build_block() -> str:
     llm_share = judged / total
 
     # cost projection: stable-prefix layout means [system]+[context] cache-hits
-    # after the first call of the day; only the [user] block misses.
+    # after the first call of the day; only the [user] block misses. All three
+    # blocks are the real rendered templates — no hand-copied prompt strings.
     system_t = tokens(prompts.SYSTEM_PROMPT)
-    context_t = tokens("User profile: engineer\nRecently delivered: none\nAssociated memory: none")
-    user_t = 120  # a typical candidate-event block, measured order of magnitude
+    context_t = tokens(prompts.context_block(JudgeContext(user_profile="engineer")))
+    judged_results = [r for r in results if r.decision.stage == 3]
+    user_t = round(sum(
+        tokens(prompts.user_block(
+            r.event, JudgeContext(scene=r.scene.scene, scene_confidence=r.scene.confidence)
+        ))
+        for r in judged_results
+    ) / len(judged_results))  # measured over the demo's judged events
     out_t = 90  # the judge's JSON verdict
-    p = PRICES["deepseek"]
     cached, missed = system_t + context_t, user_t
-    per_event = (
-        cached / 1e6 * p["input_cache_hit"]
-        + missed / 1e6 * p["input_cache_miss"]
-        + out_t / 1e6 * p["output"]
+    per_event = usd_cost(
+        "deepseek", tokens_in=cached + missed, tokens_out=out_t,
+        cached=cached, model="deepseek-chat",
     )
     per_1k = per_event * 1000 * llm_share  # rule-killed events never pay
     cache_rate = cached / (cached + missed)

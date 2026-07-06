@@ -26,7 +26,7 @@ class AnthropicJudge(HTTPJudge):
         )
         resp.raise_for_status()
         body = resp.json()
-        u = body.get("usage", {})
+        u = body.get("usage") or {}  # some proxies send "usage": null
         usage = JudgeUsage(
             tokens_in=u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0),
             tokens_out=u.get("output_tokens", 0),

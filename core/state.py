@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS topic_weights (
     topic TEXT PRIMARY KEY, weights TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS scene_log (
     rowid_ INTEGER PRIMARY KEY AUTOINCREMENT, scene TEXT, at TEXT, data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY, data TEXT NOT NULL);
 """
 
 
@@ -174,20 +176,24 @@ class State:
         )
         return {r[0]: r[1] for r in rows}
 
-    async def decision_stats(self) -> dict:
-        """Aggregate trace/cost accounting across all decisions (Step 26)."""
-        rows = await self._db.execute_fetchall("SELECT data FROM decisions")
-        total = judged = tokens_in = cached = 0
-        cost = 0.0
-        for (data,) in rows:
-            d = json.loads(data)
-            total += 1
-            if d.get("stage") == 3:
-                judged += 1
-            t = d.get("trace") or {}
-            tokens_in += t.get("tokens_in", 0)
-            cached += t.get("cached_tokens", 0)
-            cost += t.get("usd_cost", 0.0)
+    async def decision_stats(self, since=None) -> dict:
+        """Aggregate cost accounting over decisions (Step 26), windowed by event
+        received_at when `since` is given. SQL-side (json_extract) so the tact
+        report stays O(1) memory as the decisions table grows; degraded
+        decisions never consulted the LLM and do not count as judged."""
+        where = "WHERE e.received_at >= ?" if since else ""
+        params = (since.isoformat(),) if since else ()
+        rows = await self._db.execute_fetchall(
+            "SELECT COUNT(*),"
+            " COALESCE(SUM(json_extract(d.data,'$.stage')=3"
+            "   AND NOT COALESCE(json_extract(d.data,'$.degraded'),0)),0),"
+            " COALESCE(SUM(COALESCE(json_extract(d.data,'$.trace.tokens_in'),0)),0),"
+            " COALESCE(SUM(COALESCE(json_extract(d.data,'$.trace.cached_tokens'),0)),0),"
+            " COALESCE(SUM(COALESCE(json_extract(d.data,'$.cost'),0)),0.0)"
+            f" FROM decisions d JOIN events e ON e.id = d.event_id {where}",
+            params,
+        )
+        total, judged, tokens_in, cached, cost = rows[0]
         return {
             "total": total,
             "judged": judged,
@@ -195,6 +201,18 @@ class State:
             "cached_tokens": cached,
             "usd_cost": cost,
         }
+
+    # meta kv (operational state: degradation, etc.) — its own namespace so
+    # free-text event topics can never collide with internal markers (Step 28)
+    async def get_meta(self, key: str) -> dict | None:
+        data = await self._get_data("SELECT data FROM meta WHERE key=?", (key,))
+        return json.loads(data) if data else None
+
+    async def set_meta(self, key: str, value: dict) -> None:
+        await self._put(
+            "INSERT OR REPLACE INTO meta (key, data) VALUES (?,?)",
+            (key, json.dumps(value)),
+        )
 
     # topic weights
     async def get_topic_weights(self, topic: str) -> dict | None:

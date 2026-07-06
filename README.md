@@ -22,8 +22,8 @@
 <!-- metrics:start -->
 **24 events in → 1 interruption** (96% intercepted: 14 blocked outright, the rest batched, dispatched, or remembered)
 · only **75% of events ever reach the LLM** — the noisiest 25% dies on hard rules in microseconds, for free
-· stable-prefix prompts: **64% of judge input tokens cache-hit** (system + context blocks)
-· projected judgment cost **$0.110 per 1,000 events** (DeepSeek list prices, cache-aware)
+· stable-prefix prompts: **70% of judge input tokens cache-hit** (system + context blocks)
+· projected judgment cost **$0.104 per 1,000 events** (DeepSeek list prices, cache-aware)
 
 *(every number regenerates from the deterministic demo replay: `make readme-metrics`)*
 <!-- metrics:end -->

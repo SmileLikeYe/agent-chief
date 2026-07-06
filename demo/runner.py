@@ -122,22 +122,36 @@ def replay(fixture: Fixture, judge=None) -> list[ReplayResult]:
             memory_hits = [
                 text for text, mvec in memory if cosine(vec, mvec) > ASSOCIATION_THRESHOLD
             ][:3]
-            result = asyncio.run(judge.judge(event, None))
-            route, score, comps, reason = score_and_route(
-                result, scene, memory_hit=bool(memory_hits)
-            )
-            decision = Decision(
-                event_id=event.id,
-                route=route,  # type: ignore[arg-type]
-                score=score,
-                components=comps,
-                scene=scene.scene,
-                scene_confidence=scene.confidence,
-                cost=0.0,
-                reason=reason,
-                stage=3,
-            )
-            if route == "curate" and result.memorize:
+            try:
+                result = asyncio.run(judge.judge(event, None))
+            except Exception as exc:  # one flaky case must not abort a paid eval run
+                result = None
+                decision = Decision(
+                    event_id=event.id,
+                    route="digest",  # mirror production degradation (Step 28)
+                    scene=scene.scene,
+                    scene_confidence=scene.confidence,
+                    cost=0.0,
+                    reason=f"judge error ({type(exc).__name__}); conservative digest",
+                    stage=3,
+                    degraded=True,
+                )
+            if result is not None:
+                route, score, comps, reason = score_and_route(
+                    result, scene, memory_hit=bool(memory_hits)
+                )
+                decision = Decision(
+                    event_id=event.id,
+                    route=route,  # type: ignore[arg-type]
+                    score=score,
+                    components=comps,
+                    scene=scene.scene,
+                    scene_confidence=scene.confidence,
+                    cost=0.0,
+                    reason=reason,
+                    stage=3,
+                )
+            if result is not None and decision.route == "curate" and result.memorize:
                 memory.append((result.memorize, DEFAULT_EMBEDDER.embed(result.memorize)))
 
         if event.dedup_key:

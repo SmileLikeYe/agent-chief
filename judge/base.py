@@ -49,7 +49,14 @@ class Judge(Protocol):
 
 
 class JudgeError(RuntimeError):
-    """The backend could not produce a valid JudgeResult (after retries)."""
+    """The backend could not produce a valid JudgeResult (after retries).
+
+    Carries `usage`: the tokens paid across all failed attempts, so the
+    degraded path can still bill them (Step 26)."""
+
+    def __init__(self, message: str, usage: "JudgeUsage | None" = None):
+        super().__init__(message)
+        self.usage = usage
 
 
 def extract_json(text: str) -> str:
@@ -103,7 +110,7 @@ class HTTPJudge:
         ctx = context or JudgeContext()
         v = self.prompt_version
         messages = [
-            {"role": "system", "content": prompts.render("system", version=v)},
+            {"role": "system", "content": prompts.render_static("system", version=v)},
             {"role": "system", "content": prompts.context_block(ctx, version=v)},
             {"role": "user", "content": prompts.user_block(event, ctx, version=v)},
         ]
@@ -118,13 +125,20 @@ class HTTPJudge:
                     cached_tokens=total.cached_tokens + usage.cached_tokens,
                 )
                 try:
-                    result = JudgeResult.model_validate_json(extract_json(raw))
+                    import json as json_mod
+
+                    data = json_mod.loads(extract_json(raw))
+                    if isinstance(data, dict):
+                        data.pop("usage", None)  # transport-owned; never trust the LLM's echo
+                    result = JudgeResult.model_validate(data)
                     result.usage = total  # retries included: the user pays for them too
                     return result
                 except Exception as exc:
                     last_error = exc
                     messages = [
                         *messages,
-                        {"role": "user", "content": prompts.render("retry", version=v)},
+                        {"role": "user", "content": prompts.render_static("retry", version=v)},
                     ]
-        raise JudgeError(f"{self.name}: malformed judge output after retries") from last_error
+        raise JudgeError(
+            f"{self.name}: malformed judge output after retries", usage=total
+        ) from last_error

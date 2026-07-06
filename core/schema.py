@@ -45,7 +45,6 @@ class DecisionTrace(BaseModel):
     tokens_in: int = 0
     tokens_out: int = 0
     cached_tokens: int = 0
-    usd_cost: float = 0.0
     backend: str | None = None
     prompt_version: str | None = None
 

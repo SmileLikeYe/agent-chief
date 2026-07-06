@@ -9,6 +9,14 @@ def make_judge(llm_config: dict) -> Judge:
     api_key = llm_config.get("api_key")
     base_url = llm_config.get("base_url")
     version = llm_config.get("prompt_version")
+    if version:
+        from judge import prompts
+
+        if version not in prompts.available_versions():
+            raise ValueError(
+                f"unknown prompt_version {version!r}; available: "
+                f"{', '.join(prompts.available_versions())}"
+            )
 
     if backend == "fixtures":
         from judge.fixtures import FixtureJudge

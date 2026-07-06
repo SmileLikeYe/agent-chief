@@ -37,6 +37,17 @@ def render(name: str, version: str | None = None, root: Path | None = None, **va
     return _env(Path(root or TEMPLATES_ROOT)).get_template(f"{version}/{name}.j2").render(**vars)
 
 
+_static_cache: dict[tuple, str] = {}
+
+
+def render_static(name: str, version: str | None = None, root: Path | None = None) -> str:
+    """Cached render for variable-free templates (system/retry) — hot path."""
+    key = (name, version or PROMPT_VERSION, str(root or TEMPLATES_ROOT))
+    if key not in _static_cache:
+        _static_cache[key] = render(name, version=version, root=root)
+    return _static_cache[key]
+
+
 def template_exists(name: str, version: str | None = None, root: Path | None = None) -> bool:
     try:
         _env(Path(root or TEMPLATES_ROOT)).get_template(f"{version or PROMPT_VERSION}/{name}.j2")

@@ -14,6 +14,7 @@ class StaticJudge:
     """Deterministic judge for pipeline tests."""
 
     name = "static"
+    prompt_version = None  # declared → decisions get stamped with the active version
 
     def __init__(self, **overrides):
         self.overrides = overrides
