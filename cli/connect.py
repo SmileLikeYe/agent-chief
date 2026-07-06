@@ -16,7 +16,7 @@ from rich.console import Console
 
 from core.config import chief_home, config_path, load_config
 
-console = Console(soft_wrap=True)  # never wrap URLs
+console = Console(soft_wrap=True, highlight=False)  # keep URLs copy-pastable
 
 
 def _serialize(cfg: dict) -> str:
