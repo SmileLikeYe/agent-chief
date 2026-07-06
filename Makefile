@@ -15,9 +15,12 @@ readme-metrics:
 demo-gif:
 	bash scripts/demo-gif.sh
 
+clean-dist:
+	rm -f dist/*
+
 build:
 	uv build
 
-release-check: lint test build
-	uvx --isolated --from dist/agent_chief-0.1.0-py3-none-any.whl chief demo --fast > /dev/null
+release-check: clean-dist lint test build
+	uvx --isolated --from dist/agent_chief-*-py3-none-any.whl chief demo --fast > /dev/null
 	@echo "release check passed"
