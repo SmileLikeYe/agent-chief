@@ -10,6 +10,7 @@ SUBCOMMANDS = [
     "demo",
     "init",
     "run",
+    "ui",
     "digest",
     "status",
     "policy",

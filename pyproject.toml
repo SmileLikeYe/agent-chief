@@ -73,6 +73,7 @@ packages = [
     "skills",
     "policy",
     "eval",
+    "ui",
 ]
 
 [tool.ruff]

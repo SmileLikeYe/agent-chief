@@ -167,8 +167,14 @@ async def run_resident(once: bool = False) -> None:
 
         tasks: list[asyncio.Task] = []
         if not once:
+            from dispatch.executor import make_executor
+
+            default_exec = config.get("dispatch", {})
             tasks.extend(
-                await _start_network(brain, state, ingest_cfg, delivery_cfg, learner=learner)
+                await _start_network(
+                    brain, state, ingest_cfg, delivery_cfg, learner=learner,
+                    executor=make_executor("claude_code", default_exec),
+                )
             )
             tasks.append(
                 asyncio.ensure_future(
@@ -193,8 +199,38 @@ async def run_resident(once: bool = False) -> None:
                 t.cancel()
 
 
+async def run_console() -> None:
+    """SPEC v3.2 Step 33: the console without pollers/scheduler/telegram —
+    `chief ui` for people who don't run the resident daemon."""
+    import uvicorn
+
+    from dispatch.executor import make_executor
+    from ingest.http import create_app
+    from judge.factory import make_judge
+
+    config = load_config()
+    ingest_cfg = config.get("ingest", {})
+    async with State.open(db_path()) as state:
+        embedder = make_embedder(config.get("memory", {}))
+        learner = Learner(state, classifier=SimilarityClassifier(embedder=embedder))
+        brain = Brain(
+            state,
+            make_judge(config.get("llm", {})),
+            policy_path=policy_path(),
+            embedder=embedder,
+        )
+        app = create_app(
+            brain, token=ingest_cfg.get("webhook_token", "change-me"),
+            learner=learner,
+            executor=make_executor("claude_code", config.get("dispatch", {})),
+        )
+        port = int(ingest_cfg.get("webhook_port", 8787))
+        Console().print(f"🎩 console: [bold]http://127.0.0.1:{port}/ui[/bold]")
+        await uvicorn.Server(uvicorn.Config(app, port=port, log_level="warning")).serve()
+
+
 async def _start_network(
-    brain, state, ingest_cfg, delivery_cfg, learner=None
+    brain, state, ingest_cfg, delivery_cfg, learner=None, executor=None
 ) -> list[asyncio.Task]:
     import uvicorn
 
@@ -203,7 +239,10 @@ async def _start_network(
     from ingest.sources import rss as rss_source
 
     tasks = []
-    app = create_app(brain, token=ingest_cfg.get("webhook_token", "change-me"), learner=learner)
+    app = create_app(
+        brain, token=ingest_cfg.get("webhook_token", "change-me"),
+        learner=learner, executor=executor,
+    )
     server = uvicorn.Server(
         uvicorn.Config(app, port=int(ingest_cfg.get("webhook_port", 8787)), log_level="warning")
     )

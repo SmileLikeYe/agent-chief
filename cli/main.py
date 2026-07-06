@@ -256,6 +256,16 @@ def digest(now: bool = typer.Option(False, "--now", help="Send the digest immedi
 
 
 @app.command()
+def ui():
+    """Serve the local web console at http://127.0.0.1:8787/ui (SPEC v3.2)."""
+    import asyncio
+
+    from cli.runtime import run_console
+
+    asyncio.run(run_console())
+
+
+@app.command()
 def status():
     """Show scene / queue / today's stats."""
     import asyncio

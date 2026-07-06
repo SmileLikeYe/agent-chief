@@ -74,3 +74,5 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-05 · No migration for the pre-meta "__degraded__" row: v0.1.0 was never published to PyPI (BLOCKERS), so no installed base carries the old key.
 - 2026-07-06 · v3.2: natural feedback signals (should/shouldn't_interrupt) use the same EMA machinery with alpha 0.35 — stronger than every inferred signal but still bounded; no separate learning path to keep the system explainable.
 - 2026-07-06 · POST /v1/feedback stores feedback even for unknown/expired events (learned=false) — feedback must never be droppable just because retention beat it.
+- 2026-07-06 · The console is one static HTML file (vanilla JS, no build toolchain) served by the existing FastAPI app on 127.0.0.1 — same port, same bearer token, zero new dependencies; SPEC §13's hosted-UI ban stands untouched.
+- 2026-07-06 · Console task approval authorizes EXECUTION, not trust: dispatch_and_verify still runs the acceptance check, so "done is a claim, not a proof" survives the human click.

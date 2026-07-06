@@ -113,6 +113,12 @@ class State:
             (t.id, t.status, t.model_dump_json()),
         )
 
+    async def list_tasks(self, limit: int = 50) -> list[Task]:
+        rows = await self._db.execute_fetchall(
+            "SELECT data FROM tasks ORDER BY rowid DESC LIMIT ?", (limit,)
+        )
+        return [Task.model_validate_json(r[0]) for r in rows]
+
     async def load_task(self, task_id: str) -> Task | None:
         data = await self._get_data("SELECT data FROM tasks WHERE id=?", (task_id,))
         return Task.model_validate_json(data) if data else None
@@ -179,6 +185,24 @@ class State:
             params,
         )
         return {r[0]: r[1] for r in rows}
+
+    async def recent_decisions(self, limit: int = 50, q: str | None = None) -> list[tuple]:
+        """Newest-first (Event, Decision) pairs for the console history view."""
+        rows = await self._db.execute_fetchall(
+            "SELECT e.data, d.data FROM decisions d JOIN events e ON e.id = d.event_id"
+            " ORDER BY e.received_at DESC LIMIT ?",
+            (limit,),
+        )
+        pairs = [
+            (Event.model_validate_json(r[0]), Decision.model_validate_json(r[1])) for r in rows
+        ]
+        if q:
+            needle = q.lower()
+            pairs = [
+                (e, d) for e, d in pairs
+                if needle in e.summary.lower() or needle in e.topic.lower()
+            ]
+        return pairs
 
     async def decision_stats(self, since=None) -> dict:
         """Aggregate cost accounting over decisions (Step 26), windowed by event

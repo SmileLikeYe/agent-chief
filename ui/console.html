@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chief — console</title>
+<style>
+  :root { --bg:#0f1117; --panel:#181c26; --line:#2a3040; --text:#e6e8ee;
+          --dim:#9aa3b2; --accent:#7dd3fc; --good:#4ade80; --bad:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:14px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:12px 20px;
+           border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; }
+  nav button { background:none; border:none; color:var(--dim); padding:8px 10px;
+               cursor:pointer; font-size:14px; border-bottom:2px solid transparent; }
+  nav button.on { color:var(--text); border-color:var(--accent); }
+  main { padding:16px 20px; max-width:1080px; margin:0 auto; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+          padding:12px 14px; margin-bottom:10px; }
+  .row { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .dim { color:var(--dim); font-size:12px; }
+  .route { font-weight:600; text-transform:uppercase; font-size:11px;
+           padding:1px 7px; border-radius:9px; border:1px solid var(--line); }
+  .route.interrupt { color:#fbbf24; } .route.dispatch { color:var(--accent); }
+  .route.digest { color:var(--good); } .route.drop { color:var(--dim); }
+  .route.curate { color:#c4b5fd; }
+  textarea { width:100%; min-height:280px; background:var(--bg); color:var(--text);
+             border:1px solid var(--line); border-radius:6px; padding:10px;
+             font:13px/1.5 ui-monospace,monospace; }
+  button.act { background:var(--panel); color:var(--text); border:1px solid var(--line);
+               border-radius:6px; padding:4px 10px; cursor:pointer; }
+  button.act:hover { border-color:var(--accent); }
+  input[type=text] { background:var(--bg); color:var(--text); border:1px solid var(--line);
+                     border-radius:6px; padding:6px 10px; width:260px; }
+  .stat { font-size:20px; font-weight:700; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .ok { color:var(--good); } .warn { color:var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎩 Chief</h1>
+  <nav id="tabs">
+    <button data-v="today" class="on">Today</button>
+    <button data-v="history">History</button>
+    <button data-v="rules">Rules</button>
+    <button data-v="tasks">Tasks</button>
+    <button data-v="sources">Sources</button>
+  </nav>
+  <span id="health" class="dim" style="margin-left:auto"></span>
+</header>
+<main id="view"></main>
+<script>
+const $ = s => document.querySelector(s);
+let TOKEN = localStorage.getItem("chief_token") || "";
+
+async function api(path, opts={}) {
+  if (!TOKEN) { TOKEN = prompt("Chief API token ([ingest].webhook_token in ~/.chief/config.toml)") || ""; localStorage.setItem("chief_token", TOKEN); }
+  const r = await fetch(path, {...opts, headers: {"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json", ...(opts.headers||{})}});
+  if (r.status === 401) { localStorage.removeItem("chief_token"); TOKEN=""; throw new Error("bad token — reload to retry"); }
+  return r.json();
+}
+const esc = t => (t||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function decisionCard(row) {
+  const e = row.event, d = row.decision;
+  return `<div class="card">
+    <div class="row">
+      <span class="route ${d.route}">${d.route}</span>
+      <strong>${esc(e.summary)}</strong>
+    </div>
+    <div class="dim">${esc(e.topic)} · ${esc(e.source)} · ${esc(e.received_at)}
+      ${d.score!=null ? "· score "+d.score.toFixed(2) : ""} ${d.degraded ? "· <span class=warn>degraded</span>" : ""}
+      · $${(d.cost||0).toFixed(4)}</div>
+    <div class="dim">↳ ${esc(d.reason)}</div>
+    <div class="row" style="margin-top:6px">
+      <button class="act" onclick="fb('${e.id}','should_interrupt',this)">👍 worth my attention</button>
+      <button class="act" onclick="fb('${e.id}','should_not_interrupt',this)">👎 don't bother me</button>
+    </div>
+  </div>`;
+}
+async function fb(id, signal, btn) {
+  await api("/v1/feedback", {method:"POST", body: JSON.stringify({event_id:id, signal})});
+  btn.textContent = "✓ learned"; btn.disabled = true;
+}
+
+const views = {
+  async today() {
+    const [ov, digest] = await Promise.all([api("/api/overview"), api("/api/digest")]);
+    const c = ov.counts || {};
+    $("#health").innerHTML = ov.degraded
+      ? `<span class="warn">judge degraded since ${esc(ov.degraded.since)}</span>`
+      : `<span class="ok">judge healthy</span>` + (ov.shadow ? " · shadow mode" : "");
+    return `<div class="grid">
+        <div class="card"><div class="stat">${Object.values(c).reduce((a,b)=>a+b,0)}</div><div class="dim">events in</div></div>
+        <div class="card"><div class="stat">${c.interrupt||0}</div><div class="dim">interrupts</div></div>
+        <div class="card"><div class="stat">${((ov.stats.llm_share||0)*100).toFixed(0)}%</div><div class="dim">reached the LLM</div></div>
+        <div class="card"><div class="stat">$${(ov.stats.usd_cost||0).toFixed(4)}</div><div class="dim">judgment spend</div></div>
+      </div>
+      <h3>Digest queue (last 24h)</h3>
+      ${digest.length ? digest.map(decisionCard).join("") : '<div class="dim">nothing worth batching — that is the product working</div>'}`;
+  },
+  async history() {
+    const q = window._q || "";
+    const rows = await api("/api/decisions?limit=100&q=" + encodeURIComponent(q));
+    return `<div class="row" style="margin-bottom:10px">
+        <input type="text" placeholder="search summary or topic…" value="${esc(q)}"
+          onchange="window._q=this.value; render('history')">
+        <span class="dim">${rows.length} decisions</span>
+      </div>` + rows.map(decisionCard).join("");
+  },
+  async rules() {
+    const p = await api("/api/policy");
+    return `<p class="dim">POLICY.md — your edits win over everything learned, effective immediately.</p>
+      <textarea id="policy">${esc(p.text)}</textarea>
+      <p><button class="act" onclick="savePolicy()">Save</button> <span id="saved" class="ok"></span></p>`;
+  },
+  async tasks() {
+    const ts = await api("/api/tasks");
+    if (!ts.length) return '<div class="dim">no dispatch tasks yet</div>';
+    return ts.map(t => `<div class="card">
+        <div class="row"><span class="route ${t.status==='done'?'digest':t.status==='rejected'?'drop':'dispatch'}">${t.status}</span>
+          <strong>${esc(t.goal)}</strong></div>
+        <div class="dim">${esc(t.executor)} · accept: ${esc(t.acceptance)} ${t.result_summary ? "· "+esc(t.result_summary) : ""}</div>
+        ${t.status==="pending" ? `<div class="row" style="margin-top:6px">
+          <button class="act" onclick="taskAct('${t.id}','approve')">✅ Approve &amp; run</button>
+          <button class="act" onclick="taskAct('${t.id}','reject')">🚫 Reject</button></div>` : ""}
+      </div>`).join("");
+  },
+  async sources() {
+    const ss = await api("/api/sources");
+    return `<p class="dim">Everything flows in through one protocol. Connect more with <code>chief connect &lt;source&gt;</code>.</p>` +
+      ss.map(s => `<div class="card"><div class="row">
+        <strong>${esc(s.name)}</strong>
+        <span class="${s.connected ? "ok" : "dim"}">${s.connected ? "connected" : "not configured"}</span>
+      </div><div class="dim">${esc(s.detail)}</div></div>`).join("");
+  },
+};
+async function savePolicy() {
+  await api("/api/policy", {method:"PUT", body: JSON.stringify({text: $("#policy").value})});
+  $("#saved").textContent = "saved — live now";
+}
+async function taskAct(id, action) {
+  await api("/api/tasks/" + id, {method:"POST", body: JSON.stringify({action})});
+  render("tasks");
+}
+async function render(name) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === name));
+  try { $("#view").innerHTML = await views[name](); }
+  catch (e) { $("#view").innerHTML = `<div class="card warn">${esc(e.message)}</div>`; }
+}
+$("#tabs").addEventListener("click", e => e.target.dataset.v && render(e.target.dataset.v));
+render("today");
+</script>
+</body>
+</html>

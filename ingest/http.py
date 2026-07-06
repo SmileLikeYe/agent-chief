@@ -15,7 +15,7 @@ from core.schema import Decision
 DEFAULT_PORT = 8787
 
 
-def create_app(brain: Brain, token: str, learner=None) -> FastAPI:
+def create_app(brain: Brain, token: str, learner=None, executor=None) -> FastAPI:
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import version as pkg_version
 
@@ -52,5 +52,94 @@ def create_app(brain: Brain, token: str, learner=None) -> FastAPI:
             return {"ok": True, "learned": True}
         await brain.state.save_feedback(event_id, signal, now)
         return {"ok": True, "learned": False}
+
+    # --- local web console (SPEC v3.2 Step 33; 127.0.0.1 only, token-gated) ---
+
+    @app.get("/ui")
+    async def console_page():
+        from fastapi.responses import HTMLResponse
+
+        from ui import CONSOLE_HTML_PATH
+
+        return HTMLResponse(CONSOLE_HTML_PATH.read_text(encoding="utf-8"))
+
+    @app.get("/api/overview")
+    async def overview(_: None = Depends(check_auth)) -> dict:
+        from datetime import UTC, datetime, timedelta
+
+        from core.brain import load_degraded
+        from core.learner import ShadowMode
+
+        since = datetime.now(UTC) - timedelta(hours=24)
+        stats = await brain.state.decision_stats(since=since)
+        stats["llm_share"] = stats["judged"] / stats["total"] if stats["total"] else 0.0
+        return {
+            "counts": await brain.state.route_counts(since=since),
+            "stats": stats,
+            "degraded": await load_degraded(brain.state),
+            "shadow": await ShadowMode(brain.state).active(datetime.now(UTC)),
+        }
+
+    @app.get("/api/decisions")
+    async def decisions(limit: int = 50, q: str = "", _: None = Depends(check_auth)):
+        rows = await brain.state.recent_decisions(limit=limit, q=q or None)
+        return [
+            {"event": e.model_dump(mode="json"), "decision": d.model_dump(mode="json")}
+            for e, d in rows
+        ]
+
+    @app.get("/api/digest")
+    async def digest_queue(_: None = Depends(check_auth)):
+        from datetime import UTC, datetime, timedelta
+
+        rows = await brain.state.digest_pool(datetime.now(UTC) - timedelta(hours=24))
+        return [
+            {"event": e.model_dump(mode="json"), "decision": d.model_dump(mode="json")}
+            for e, d in rows
+        ]
+
+    @app.get("/api/policy")
+    async def get_policy(_: None = Depends(check_auth)) -> dict:
+        path = brain.policy_path
+        return {"text": path.read_text(encoding="utf-8") if path.exists() else ""}
+
+    @app.put("/api/policy")
+    async def put_policy(payload: dict, _: None = Depends(check_auth)) -> dict:
+        text = payload.get("text")
+        if text is None:
+            raise HTTPException(status_code=422, detail="need text")
+        brain.policy_path.parent.mkdir(parents=True, exist_ok=True)
+        brain.policy_path.write_text(text, encoding="utf-8")
+        return {"ok": True}  # brain reloads POLICY.md per decision — live now
+
+    @app.get("/api/tasks")
+    async def list_tasks(_: None = Depends(check_auth)):
+        rows = await brain.state.list_tasks()
+        return [t.model_dump(mode="json") for t in rows]
+
+    @app.post("/api/tasks/{task_id}")
+    async def act_on_task(task_id: str, payload: dict, _: None = Depends(check_auth)) -> dict:
+        task = await brain.state.load_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="no such task")
+        action = payload.get("action")
+        if action == "reject":
+            task.status = "rejected"
+            await brain.state.save_task(task)
+            return {"ok": True, "status": task.status}
+        if action == "approve":
+            if executor is None:
+                raise HTTPException(status_code=409, detail="no executor configured")
+            from dispatch.acceptance import dispatch_and_verify
+
+            task, _ask = await dispatch_and_verify(brain.state, task, executor)
+            return {"ok": True, "status": task.status}
+        raise HTTPException(status_code=422, detail="action must be approve or reject")
+
+    @app.get("/api/sources")
+    async def sources(_: None = Depends(check_auth)):
+        from ingest.connectors import connector_status
+
+        return connector_status()
 
     return app
