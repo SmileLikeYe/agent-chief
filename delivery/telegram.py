@@ -15,7 +15,14 @@ from delivery.base import DeliveryMessage, render_message
 logger = logging.getLogger(__name__)
 
 # button label → SPEC §4.6 feedback signal
-BUTTONS = [("Do it", "acted"), ("Later", "read"), ("Mute this kind", "muted")]
+BUTTONS = [
+    ("Do it", "acted"),
+    ("Later", "read"),
+    ("Mute this kind", "muted"),
+    # natural feedback (SPEC v3.2 Step 32)
+    ("👍 Worth it", "should_interrupt"),
+    ("👎 Not worth it", "should_not_interrupt"),
+]
 
 
 class TelegramChannel:

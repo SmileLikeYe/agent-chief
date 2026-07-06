@@ -54,7 +54,10 @@ async def test_inline_buttons_carry_feedback_callbacks():
     await ch.send(msg(), level="ring")
     keyboard = calls[0][1]["reply_markup"]["inline_keyboard"][0]
     labels = [b["text"] for b in keyboard]
-    assert labels == ["Do it", "Later", "Mute this kind"]
+    # Step 32 (v3.2): natural-feedback buttons ride along
+    assert labels == [
+        "Do it", "Later", "Mute this kind", "👍 Worth it", "👎 Not worth it"
+    ]
     datas = [b["callback_data"] for b in keyboard]
     assert datas[0] == "fb|acted|evt_x|travel.flight_change"
     assert datas[1] == "fb|read|evt_x|travel.flight_change"

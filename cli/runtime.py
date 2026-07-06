@@ -167,7 +167,9 @@ async def run_resident(once: bool = False) -> None:
 
         tasks: list[asyncio.Task] = []
         if not once:
-            tasks.extend(await _start_network(brain, state, ingest_cfg, delivery_cfg))
+            tasks.extend(
+                await _start_network(brain, state, ingest_cfg, delivery_cfg, learner=learner)
+            )
             tasks.append(
                 asyncio.ensure_future(
                     scheduler_loop(
@@ -191,7 +193,9 @@ async def run_resident(once: bool = False) -> None:
                 t.cancel()
 
 
-async def _start_network(brain, state, ingest_cfg, delivery_cfg) -> list[asyncio.Task]:
+async def _start_network(
+    brain, state, ingest_cfg, delivery_cfg, learner=None
+) -> list[asyncio.Task]:
     import uvicorn
 
     from ingest.http import create_app
@@ -199,7 +203,7 @@ async def _start_network(brain, state, ingest_cfg, delivery_cfg) -> list[asyncio
     from ingest.sources import rss as rss_source
 
     tasks = []
-    app = create_app(brain, token=ingest_cfg.get("webhook_token", "change-me"))
+    app = create_app(brain, token=ingest_cfg.get("webhook_token", "change-me"), learner=learner)
     server = uvicorn.Server(
         uvicorn.Config(app, port=int(ingest_cfg.get("webhook_port", 8787)), log_level="warning")
     )

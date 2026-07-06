@@ -19,6 +19,15 @@ SIGNAL_EFFECTS: dict[str, tuple[float, int]] = {
     "read": (0.1, +1),
     "dismissed_fast": (0.2, -1),
     "timeout": (0.05, -1),
+    # natural feedback (SPEC v3.2 Step 32): the user said it outright, so it
+    # outweighs every inferred signal
+    "should_interrupt": (0.35, +1),
+    "should_not_interrupt": (0.35, -1),
+}
+
+# every signal any surface may submit (HTTP/MCP/Telegram/UI validate against this)
+KNOWN_SIGNALS = frozenset(SIGNAL_EFFECTS) | {
+    "promote", "muted", "task_ok", "task_fail", "shadow_good", "shadow_bad",
 }
 
 WEIGHT_MIN, WEIGHT_MAX = 0.02, 0.5
