@@ -48,6 +48,58 @@ def eval_cmd(
 
 
 @app.command()
+def trace(event_id: str = typer.Argument(..., help="Event id, e.g. evt_20260706_1040_ab12.")):
+    """Replay the full decision chain for one event (SPEC v3.1 Step 26)."""
+    import asyncio
+
+    from rich.console import Console
+    from rich.table import Table
+
+    from core.config import db_path
+    from core.state import State
+
+    async def _load():
+        async with State.open(db_path()) as state:
+            return await state.load_event(event_id), await state.load_decision(event_id)
+
+    event, decision = asyncio.run(_load())
+    if not decision:
+        typer.echo(f"no decision recorded for {event_id}")
+        raise typer.Exit(code=1)
+
+    console = Console()
+    if event:
+        console.print(f"[bold]{event.summary}[/bold]  [dim]{event.topic} · {event.source}[/dim]")
+    console.print(
+        f"route [bold]{decision.route}[/bold] at stage {decision.stage} "
+        f"in scene {decision.scene} (confidence {decision.scene_confidence:.2f})"
+    )
+    if decision.matched_rules:
+        console.print(f"rules matched: {', '.join(decision.matched_rules)}")
+    if decision.score is not None:
+        comps = " ".join(f"{k}={v:.2f}" for k, v in (decision.components or {}).items())
+        console.print(f"score {decision.score:.2f}  [dim]{comps}[/dim]")
+    console.print(f"reason: {decision.reason}")
+
+    t = decision.trace
+    if t:
+        table = Table(title="stages")
+        table.add_column("stage")
+        table.add_column("ms", justify="right")
+        table.add_column("note")
+        for s in t.stages:
+            table.add_row(s.stage, f"{s.ms:.1f}", s.note)
+        console.print(table)
+        console.print(
+            f"tokens: {t.tokens_in} in ({t.cached_tokens} cached) / {t.tokens_out} out · "
+            f"backend {t.backend or '—'} · prompt {t.prompt_version or '—'} · "
+            f"cost ${t.usd_cost:.6f}"
+        )
+    else:
+        console.print("[dim]no trace recorded (pre-v3.1 decision)[/dim] $0")
+
+
+@app.command()
 def init(
     defaults: bool = typer.Option(
         False, "--defaults", help="Accept all defaults, ask nothing."
@@ -172,7 +224,10 @@ def report(days: int = typer.Option(7, "--days", help="Reporting window in days.
         Panel(
             f"{r.events_in} events in → {r.blocked} blocked · {r.batched} batched · "
             f"{r.handled} handled · {r.interrupted} interrupts\n"
-            f"shadow grading: {grade}",
+            f"shadow grading: {grade}\n"
+            f"cost: {r.llm_share:.0%} of events reached the LLM · "
+            f"cache hit rate {r.cache_hit_rate:.0%} · "
+            f"judgment cost ${r.judgment_cost:.4f}",
             title=f"🎯 Tact Report (last {r.days} days)",
             border_style="green",
         )

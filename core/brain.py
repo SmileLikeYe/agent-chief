@@ -7,11 +7,12 @@ Dispatch timeout 10 min → deliver as-is, never block (SPEC §4.4).
 
 import asyncio
 import logging
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
 from core.policy import load_policy
-from core.schema import Decision, Event, SceneState, Task
+from core.schema import Decision, DecisionTrace, Event, SceneState, StageTiming, Task
 from core.scorer import SimilarityClassifier, find_mergeable, merge_events, score_and_route, stage1
 from core.state import AuditLog, State
 from delivery.base import DeliveryMessage
@@ -22,6 +23,19 @@ from judge.base import Judge, JudgeContext
 logger = logging.getLogger(__name__)
 
 DISPATCH_TIMEOUT_SECONDS = 600.0  # 10 minutes
+
+
+class _StageClock:
+    """Per-decision stage stopwatch feeding DecisionTrace (Step 26)."""
+
+    def __init__(self):
+        self.stages: list[StageTiming] = []
+        self._t = time.perf_counter()
+
+    def mark(self, stage: str, note: str = "") -> None:
+        now = time.perf_counter()
+        self.stages.append(StageTiming(stage=stage, ms=(now - self._t) * 1000, note=note))
+        self._t = now
 
 
 class Brain:
@@ -73,10 +87,12 @@ class Brain:
         from ingest.normalize import normalize
 
         now = self.now_fn()
+        clock = _StageClock()
         if isinstance(payload, Event):
             event = payload
         else:
             event = await normalize(payload, inferrer=self.inferrer, now=now)
+        clock.mark("normalize")
 
         policy = load_policy(self.policy_path)
         scene = self._scene(now)
@@ -106,6 +122,7 @@ class Brain:
             recent_dedup_keys=recent_keys,
         )
         if hit:
+            clock.mark("stage1", note=f"rule {hit.rule} fired")
             decision = Decision(
                 event_id=event.id,
                 route=hit.route,  # type: ignore[arg-type]
@@ -115,9 +132,11 @@ class Brain:
                 matched_rules=[hit.rule],
                 reason=hit.reason,
                 stage=1,
+                trace=DecisionTrace(stages=clock.stages),
             )
         else:
-            decision = await self._stage2_or_judge(event, scene, policy, now)
+            clock.mark("stage1", note="no hard rule fired")
+            decision = await self._stage2_or_judge(event, scene, policy, now, clock)
 
         if self.shadow:
             route, annotation = await self.shadow.apply(decision, now=now)
@@ -140,6 +159,8 @@ class Brain:
                     "score": decision.score,
                     "scene": decision.scene,
                     "reason": decision.reason,
+                    "cost": decision.cost,
+                    "prompt_version": decision.trace.prompt_version if decision.trace else None,
                 }
             )
         return decision
@@ -151,10 +172,11 @@ class Brain:
             logger.exception("actor failed for %s", event.id)
 
     async def _stage2_or_judge(
-        self, event: Event, scene: SceneState, policy, now: datetime
+        self, event: Event, scene: SceneState, policy, now: datetime, clock: _StageClock
     ) -> Decision:
         if self.classifier:
             verdict = self.classifier.classify(event.summary)
+            clock.mark("stage2", note=f"classifier says {verdict.action}")
             if verdict.action == "drop":
                 return Decision(
                     event_id=event.id,
@@ -164,6 +186,7 @@ class Brain:
                     cost=0.0,
                     reason=verdict.reason,
                     stage=2,
+                    trace=DecisionTrace(stages=clock.stages),
                 )
             if verdict.action == "route":
                 return Decision(
@@ -174,11 +197,13 @@ class Brain:
                     cost=0.0,
                     reason=verdict.reason,
                     stage=2,
+                    trace=DecisionTrace(stages=clock.stages),
                 )
 
         memory_hits = []
         if self.memory:
             memory_hits = await self.memory.associate(event.summary, now=now)
+        clock.mark("associate", note=f"{len(memory_hits)} memory hits")
 
         context = JudgeContext(
             user_profile=self.user_profile,
@@ -187,6 +212,8 @@ class Brain:
             scene_confidence=scene.confidence,
         )
         result = await self.judge.judge(event, context)
+        backend = getattr(self.judge, "name", "unknown")
+        clock.mark("judge", note=f"backend {backend}")
         weights = await self.state.get_topic_weights(event.topic)
         from core.learner import load_threshold_adjust
 
@@ -198,6 +225,7 @@ class Brain:
             threshold_adjust=await load_threshold_adjust(self.state),
             memory_hit=bool(memory_hits),
         )
+        clock.mark("route", note=f"routed {route}")
         if route == "curate" and result.memorize and self.memory:
             await self.memory.curate(
                 result.memorize, topic=event.topic, origin_event_id=event.id, now=now
@@ -215,6 +243,22 @@ class Brain:
             await self.state.save_task(task)
             task_id = task.id
 
+        from judge import prompts
+        from judge.pricing import usd_cost
+
+        usage = result.usage
+        cost = usd_cost(
+            backend, usage.tokens_in, usage.tokens_out, usage.cached_tokens
+        ) if usage else 0.0
+        trace = DecisionTrace(
+            stages=clock.stages,
+            tokens_in=usage.tokens_in if usage else 0,
+            tokens_out=usage.tokens_out if usage else 0,
+            cached_tokens=usage.cached_tokens if usage else 0,
+            usd_cost=cost,
+            backend=backend,
+            prompt_version=prompts.PROMPT_VERSION,
+        )
         return Decision(
             event_id=event.id,
             route=route,  # type: ignore[arg-type]
@@ -222,10 +266,11 @@ class Brain:
             components=comps,
             scene=scene.scene,
             scene_confidence=scene.confidence,
-            cost=0.0,
+            cost=cost,
             reason=reason,
             stage=3,
             dispatch_task_id=task_id,
+            trace=trace,
         )
 
 

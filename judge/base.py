@@ -8,6 +8,14 @@ from pydantic import BaseModel, Field
 from core.schema import Event
 
 
+class JudgeUsage(BaseModel):
+    """Token accounting read from the backend's API usage fields (Step 26)."""
+
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cached_tokens: int = 0
+
+
 class JudgeResult(BaseModel):
     """The exact JSON the judge prompt demands (SPEC §4.4)."""
 
@@ -20,6 +28,7 @@ class JudgeResult(BaseModel):
     dispatch_goal: str | None = None
     memorize: str | None = None
     reason: str
+    usage: JudgeUsage | None = None  # set by the transport layer, not the LLM
 
 
 @dataclass
@@ -82,7 +91,8 @@ class HTTPJudge:
 
         return httpx.AsyncClient(transport=self._transport, timeout=self.timeout)
 
-    async def _complete(self, client, messages: list[dict], retry: bool) -> str:
+    async def _complete(self, client, messages: list[dict], retry: bool) -> tuple[str, JudgeUsage]:
+        """Return (assistant text, token usage read from the API response)."""
         raise NotImplementedError
 
     async def judge(self, event: Event, context: JudgeContext | None) -> JudgeResult:
@@ -95,11 +105,19 @@ class HTTPJudge:
             {"role": "user", "content": prompts.user_block(event, ctx)},
         ]
         last_error: Exception | None = None
+        total = JudgeUsage()
         async with self._client() as client:
             for attempt in range(self.MAX_ATTEMPTS):
-                raw = await self._complete(client, messages, retry=attempt > 0)
+                raw, usage = await self._complete(client, messages, retry=attempt > 0)
+                total = JudgeUsage(
+                    tokens_in=total.tokens_in + usage.tokens_in,
+                    tokens_out=total.tokens_out + usage.tokens_out,
+                    cached_tokens=total.cached_tokens + usage.cached_tokens,
+                )
                 try:
-                    return JudgeResult.model_validate_json(extract_json(raw))
+                    result = JudgeResult.model_validate_json(extract_json(raw))
+                    result.usage = total  # retries included: the user pays for them too
+                    return result
                 except Exception as exc:
                     last_error = exc
                     messages = [*messages, {"role": "user", "content": prompts.RETRY_PROMPT}]

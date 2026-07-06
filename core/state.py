@@ -174,6 +174,28 @@ class State:
         )
         return {r[0]: r[1] for r in rows}
 
+    async def decision_stats(self) -> dict:
+        """Aggregate trace/cost accounting across all decisions (Step 26)."""
+        rows = await self._db.execute_fetchall("SELECT data FROM decisions")
+        total = judged = tokens_in = cached = 0
+        cost = 0.0
+        for (data,) in rows:
+            d = json.loads(data)
+            total += 1
+            if d.get("stage") == 3:
+                judged += 1
+            t = d.get("trace") or {}
+            tokens_in += t.get("tokens_in", 0)
+            cached += t.get("cached_tokens", 0)
+            cost += t.get("usd_cost", 0.0)
+        return {
+            "total": total,
+            "judged": judged,
+            "tokens_in": tokens_in,
+            "cached_tokens": cached,
+            "usd_cost": cost,
+        }
+
     # topic weights
     async def get_topic_weights(self, topic: str) -> dict | None:
         data = await self._get_data("SELECT weights FROM topic_weights WHERE topic=?", (topic,))

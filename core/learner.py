@@ -193,6 +193,10 @@ class TactReport:
     interrupted: int
     graded: int
     accuracy: tuple[int, int]  # (good grades, total grades)
+    # cost dimension (SPEC v3.1 Step 26)
+    llm_share: float = 0.0  # fraction of events that reached the LLM judge
+    cache_hit_rate: float = 0.0  # cached input tokens / all input tokens
+    judgment_cost: float = 0.0  # total USD spent on judgments
 
 
 async def build_tact_report(state: State, *, days: int, now: datetime) -> TactReport:
@@ -200,6 +204,7 @@ async def build_tact_report(state: State, *, days: int, now: datetime) -> TactRe
     since = now - timedelta(days=days)
     good = await state.count_feedback(signal="shadow_good", since=since)
     bad = await state.count_feedback(signal="shadow_bad", since=since)
+    stats = await state.decision_stats()
     return TactReport(
         days=days,
         events_in=sum(counts.values()),
@@ -209,4 +214,9 @@ async def build_tact_report(state: State, *, days: int, now: datetime) -> TactRe
         interrupted=counts.get("interrupt", 0),
         graded=good + bad,
         accuracy=(good, good + bad),
+        llm_share=stats["judged"] / stats["total"] if stats["total"] else 0.0,
+        cache_hit_rate=(
+            stats["cached_tokens"] / stats["tokens_in"] if stats["tokens_in"] else 0.0
+        ),
+        judgment_cost=stats["usd_cost"],
     )

@@ -30,6 +30,26 @@ class Event(BaseModel):
     received_at: datetime
 
 
+class StageTiming(BaseModel):
+    """One pipeline stage in a decision trace (SPEC v3.1 Step 26)."""
+
+    stage: str  # triage_merge | stage1 | stage2 | associate | judge | route
+    ms: float
+    note: str = ""
+
+
+class DecisionTrace(BaseModel):
+    """Per-decision latency, token and cost accounting (SPEC v3.1 Step 26)."""
+
+    stages: list[StageTiming] = []
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cached_tokens: int = 0
+    usd_cost: float = 0.0
+    backend: str | None = None
+    prompt_version: str | None = None
+
+
 class Decision(BaseModel):
     event_id: str
     route: Route
@@ -37,11 +57,12 @@ class Decision(BaseModel):
     components: dict[str, float] | None = None
     scene: str
     scene_confidence: float
-    cost: float
+    cost: float  # USD cost of this judgment (0.0 when no LLM was consulted)
     matched_rules: list[str] = []
     reason: str
     stage: int
     dispatch_task_id: str | None = None
+    trace: DecisionTrace | None = None
 
 
 class Task(BaseModel):

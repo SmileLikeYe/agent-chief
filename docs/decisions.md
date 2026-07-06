@@ -57,3 +57,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-05 · eval/ is a real Python package even though it shadows the builtin name — SPEC v3.1 mandates the eval/golden.jsonl path and builtin eval() is unaffected; shipped in the wheel so `chief eval` works installed.
 - 2026-07-05 · Golden labels are rule-first and generator-verified against the live pipeline (eval/generate_golden.py fails on mismatch); the fixture backend is the 100% sanity ceiling, real backends measure divergence from it.
 - 2026-07-05 · Golden cases reuse the demo fixture schema (Fixture/ReplayEntry + replay()) with a meta first line in the JSONL — one pipeline for demo, regression and capability evals.
+- 2026-07-05 · Decision.cost (existing field) now carries the USD judgment cost; the full accounting (stages, tokens, cache split, backend, prompt version) lives in Decision.trace — one JSON blob, no schema migration.
+- 2026-07-05 · Judge retries bill into the same usage total (the user pays for malformed-output retries too); usage is set by the transport layer, never trusted from the LLM output.
+- 2026-07-05 · Price table (judge/pricing.py) uses published list rates per backend family, not per model — per-model tables can arrive when someone needs them; unknown backends are free.

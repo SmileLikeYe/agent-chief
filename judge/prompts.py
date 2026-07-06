@@ -9,6 +9,9 @@ import json
 from core.schema import Event
 from judge.base import JudgeContext
 
+# Stamped into every judged Decision's trace/audit record (SPEC v3.1 Step 26).
+PROMPT_VERSION = "v1"
+
 SYSTEM_PROMPT = """You are the gatekeeper of the user's attention. Your sole duty is to protect it.
 Your default answer is "do not disturb".
 For each candidate event output JSON:

@@ -1,13 +1,13 @@
 """Implements SPEC §4.4 stage 3: OpenAI judge backend (chat completions, JSON mode)."""
 
-from judge.base import HTTPJudge
+from judge.base import HTTPJudge, JudgeUsage
 
 
 class OpenAIJudge(HTTPJudge):
     name = "openai"
     base_url = "https://api.openai.com/v1"
 
-    async def _complete(self, client, messages: list[dict], retry: bool) -> str:
+    async def _complete(self, client, messages: list[dict], retry: bool) -> tuple[str, JudgeUsage]:
         resp = await client.post(
             f"{self.base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self.api_key}"},
@@ -19,4 +19,13 @@ class OpenAIJudge(HTTPJudge):
             },
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        body = resp.json()
+        u = body.get("usage", {})
+        usage = JudgeUsage(
+            tokens_in=u.get("prompt_tokens", 0),
+            tokens_out=u.get("completion_tokens", 0),
+            # deepseek reports prompt_cache_hit_tokens; openai nests cached_tokens
+            cached_tokens=u.get("prompt_cache_hit_tokens", 0)
+            or (u.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
+        )
+        return body["choices"][0]["message"]["content"], usage

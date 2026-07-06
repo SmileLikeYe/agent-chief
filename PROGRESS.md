@@ -26,8 +26,8 @@
 | 22 | OpenClaw skill | ✅(mocked) — merged into 29 | 641a140 | 2026-07-04 |
 | 23 | Docs + README | ✅ | 8cafd6d | 2026-07-04 |
 | 24 | Release assets | ✅(mocked) | ab916fa | 2026-07-04 |
-| 25 | Golden dataset + eval harness | ✅ | (this) | 2026-07-05 |
-| 26 | Decision trace + cost accounting | ⏳ | | |
+| 25 | Golden dataset + eval harness | ✅ | 4606592 | 2026-07-05 |
+| 26 | Decision trace + cost accounting | ✅ | (this) | 2026-07-05 |
 | 27 | Prompt governance | ⏳ | | |
 | 28 | Failure injection + graceful degradation | ⏳ | | |
 | 29 | Dual skill packaging (absorbs 22) | ⏳ | | |
