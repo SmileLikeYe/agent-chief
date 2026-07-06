@@ -21,21 +21,55 @@ def demo(fast: bool = typer.Option(False, "--fast", help="Replay without delays 
 def eval_cmd(
     backend: str = typer.Option("fixtures", "--backend", help="Judge backend to evaluate."),
     out: str = typer.Option(None, "--out", help="Report directory (default eval/reports/)."),
+    compare: tuple[str, str] = typer.Option(
+        (None, None), "--compare", help="Diff two prompt versions on the golden set."
+    ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
     from rich.console import Console
 
-    from eval.runner import REPORTS_DIR, run_capability, run_regression, write_report
+    from eval.runner import (
+        REPORTS_DIR,
+        run_capability,
+        run_compare,
+        run_regression,
+        write_compare_report,
+        write_report,
+    )
 
     console = Console()
-    judge = None
-    if backend != "fixtures":
+
+    def build_judge(prompt_version: str | None = None):
+        if backend == "fixtures":
+            return None  # per-entry judge blocks; prompt-insensitive
         from core.config import load_config
         from judge.factory import make_judge
 
-        judge = make_judge({**load_config().get("llm", {}), "backend": backend})
+        cfg = {**load_config().get("llm", {}), "backend": backend}
+        if prompt_version:
+            cfg["prompt_version"] = prompt_version
+        return make_judge(cfg)
 
     out_dir = out or REPORTS_DIR
+
+    if compare[0] and compare[1]:
+        version_a, version_b = compare
+        report = run_compare(build_judge(version_a), build_judge(version_b))
+        # fixture backend ignores prompts; keep the requested labels on the report
+        report.version_a, report.version_b = version_a, version_b
+        path = write_compare_report(report, out_dir)
+        console.print(
+            f"compare {version_a} vs {version_b}: delta {report.delta:+.1%}, "
+            f"{len(report.flipped)} flipped → {path}"
+        )
+        if backend == "fixtures":
+            console.print(
+                "[yellow]note[/yellow]: the fixtures backend never reads prompts — "
+                "run --compare against a real backend for a meaningful diff"
+            )
+        return
+
+    judge = build_judge()
     for report in (run_regression(judge), run_capability(judge)):
         path = write_report(report, out_dir)
         tone = "green" if report.kind == "capability" or report.agreement == 1.0 else "red"

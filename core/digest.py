@@ -10,7 +10,7 @@ from pathlib import Path
 
 from core.schema import Decision, Event
 from core.state import State
-from judge.prompts import DISTILL_PROMPT
+from judge.prompts import distill_prompt
 from memory.associate import Connection, batch_associate
 from memory.store import MemoryStore
 
@@ -89,7 +89,7 @@ async def distill(
     line: str | None = None
     if ask:
         changes = "; ".join(f"{t}: {s}×{n}" for (t, s), n in per_topic.most_common())
-        raw = (await ask(DISTILL_PROMPT.format(date=date, changes=changes))).strip()
+        raw = (await ask(distill_prompt(date=date, changes=changes))).strip()
         if POLICY_LINE_RE.match(raw):
             line = raw
     if line is None:

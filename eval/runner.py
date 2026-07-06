@@ -121,6 +121,75 @@ def render_markdown(report: EvalReport, now: datetime | None = None) -> str:
     return "\n".join(lines)
 
 
+@dataclass
+class CompareReport:
+    """Two capability runs, same golden set, different prompt versions (Step 27)."""
+
+    a: EvalReport
+    b: EvalReport
+    version_a: str
+    version_b: str
+    flipped: list[tuple]  # (entry, route_a, route_b)
+
+    @property
+    def delta(self) -> float:
+        return self.b.agreement - self.a.agreement
+
+
+def run_compare(judge_a, judge_b, path: str | Path = GOLDEN_PATH) -> CompareReport:
+    ra = run_capability(judge_a, path)
+    rb = run_capability(judge_b, path)
+    flipped = [
+        (a.entry, a.decision.route, b.decision.route)
+        for a, b in zip(ra.results, rb.results, strict=True)
+        if a.decision.route != b.decision.route
+    ]
+    return CompareReport(
+        a=ra,
+        b=rb,
+        version_a=getattr(judge_a, "prompt_version", None) or "A",
+        version_b=getattr(judge_b, "prompt_version", None) or "B",
+        flipped=flipped,
+    )
+
+
+def render_compare_markdown(report: CompareReport, now: datetime | None = None) -> str:
+    now = now or datetime.now(UTC)
+    lines = [
+        f"# Prompt compare — `{report.version_a}` vs `{report.version_b}`",
+        "",
+        f"_{now:%Y-%m-%d %H:%M} UTC — golden set, backend "
+        f"`{report.a.backend}` vs `{report.b.backend}`_",
+        "",
+        "| version | agreement |",
+        "|---|---|",
+        f"| {report.version_a} | {report.a.agreement:.1%} ({report.a.agreed}/{report.a.total}) |",
+        f"| {report.version_b} | {report.b.agreement:.1%} ({report.b.agreed}/{report.b.total}) |",
+        "",
+        f"**Agreement delta: {report.delta:+.1%}** · {len(report.flipped)} flipped samples",
+        "",
+        "## Flipped samples",
+        "",
+    ]
+    if not report.flipped:
+        lines.append("_none — the change is routing-neutral on the golden set_")
+    for entry, route_a, route_b in report.flipped:
+        lines.append(
+            f"- `{entry.event['id']}` [{entry.event['topic']}] "
+            f"{route_a} → {route_b} (expected {entry.expected_route}) — {entry.rationale}"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_compare_report(report: CompareReport, out_dir: str | Path = REPORTS_DIR) -> Path:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"compare-{report.version_a}-vs-{report.version_b}.md"
+    path.write_text(render_compare_markdown(report), encoding="utf-8")
+    return path
+
+
 def write_report(report: EvalReport, out_dir: str | Path = REPORTS_DIR) -> Path:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

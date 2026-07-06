@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 from core.schema import Event, new_event_id
-from judge.prompts import TOPIC_INFER_PROMPT
+from judge.prompts import topic_infer_prompt
 
 
 class TopicInferrer:
@@ -22,7 +22,7 @@ class TopicInferrer:
         if self.ask is None:
             topic = f"{source}.misc"
         else:
-            raw = await self.ask(TOPIC_INFER_PROMPT.format(summary=summary))
+            raw = await self.ask(topic_infer_prompt(summary=summary))
             topic = raw.strip().strip('"').strip() or f"{source}.misc"
         self._cache[summary] = topic
         return topic

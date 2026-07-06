@@ -1,66 +1,87 @@
-"""Implements SPEC §4.4: all LLM prompts. No prompt strings live anywhere else (SPEC §7.4).
+"""Implements SPEC §4.4 + v3.1 Step 27: versioned prompt templates.
+
+All prompts live in `judge/templates/<version>/*.j2` (provider-agnostic
+variables); no prompt strings live anywhere else (SPEC §7.4). The active
+version is stamped into every judged Decision's trace/audit record, and
+`chief eval --compare vA vB` diffs two versions on the golden set. Rule
+(CONTRIBUTING.md): no prompt change merges without an eval diff report.
 
 Three blocks, in prompt-caching-friendly order:
 [system] stable; [context] semi-stable (cache per day); [user] per call.
 """
 
 import json
+from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 
 from core.schema import Event
 from judge.base import JudgeContext
 
-# Stamped into every judged Decision's trace/audit record (SPEC v3.1 Step 26).
-PROMPT_VERSION = "v1"
+TEMPLATES_ROOT = Path(__file__).parent / "templates"
+PROMPT_VERSION = "v1"  # the active version, stamped into traces (Step 26)
 
-SYSTEM_PROMPT = """You are the gatekeeper of the user's attention. Your sole duty is to protect it.
-Your default answer is "do not disturb".
-For each candidate event output JSON:
-{"urgency":0-1,"relevance":0-1,"actionability":0-1,"novelty":0-1,"confidence":0-1,
- "dispatchable":true|false,"dispatch_goal":"one-line goal if dispatchable else null",
- "memorize":"one-line fact/intent worth remembering, else null",
- "reason":"one line"}
-urgency = does value decay with time; relevance = match to user's goals;
-actionability = what the user can do right now; novelty = new info vs recently delivered;
-confidence = verifiability of evidence;
-dispatchable = is there prep work an agent can complete without the user.
-Output JSON only. Exaggeration and flattery are dereliction of duty. Temperature 0."""
-
-RETRY_PROMPT = (
-    "Your previous output was not the required JSON object. "
-    "Answer again with ONLY the JSON object described in the instructions."
-)
-
-VERIFY_PROMPT = (
-    "Does this result satisfy the acceptance criteria? Answer pass/fail + one reason.\n"
-    'Output JSON only: {{"verdict":"pass"|"fail","reason":"one line"}}\n'
-    "Acceptance criteria: {acceptance}\nResult: {result}"
-)
-
-DISTILL_PROMPT = (
-    "Translate today's preference-weight changes into ONE short human-readable policy line "
-    "a user would recognize, format exactly:\n"
-    "- {{rule}} (learned {date}, source: {{stats}})\n"
-    "Weight changes: {changes}\nOutput the single line only."
-)
-
-TOPIC_INFER_PROMPT = (
-    "Assign a short hierarchical topic (like dev.ci or travel.flight_change) to this event. "
-    "Output the topic string only, no punctuation around it.\nEvent: {summary}"
-)
+_envs: dict[Path, Environment] = {}
 
 
-def context_block(ctx: JudgeContext) -> str:
-    recent = "; ".join(ctx.recent_deliveries) or "none"
-    memory = "; ".join(ctx.associated_memory) or "none"
-    return (
-        f"User profile: {ctx.user_profile or 'unknown'}\n"
-        f"Recently delivered: {recent}\n"
-        f"Associated memory: {memory}"
+def _env(root: Path) -> Environment:
+    if root not in _envs:
+        _envs[root] = Environment(
+            loader=FileSystemLoader(root), undefined=StrictUndefined, autoescape=False
+        )
+    return _envs[root]
+
+
+def render(name: str, version: str | None = None, root: Path | None = None, **vars) -> str:
+    version = version or PROMPT_VERSION
+    return _env(Path(root or TEMPLATES_ROOT)).get_template(f"{version}/{name}.j2").render(**vars)
+
+
+def template_exists(name: str, version: str | None = None, root: Path | None = None) -> bool:
+    try:
+        _env(Path(root or TEMPLATES_ROOT)).get_template(f"{version or PROMPT_VERSION}/{name}.j2")
+        return True
+    except TemplateNotFound:
+        return False
+
+
+def available_versions(root: Path | None = None) -> list[str]:
+    root = Path(root or TEMPLATES_ROOT)
+    return sorted(p.name for p in root.iterdir() if p.is_dir())
+
+
+def verify_prompt(*, acceptance: str, result: str, version: str | None = None) -> str:
+    return render("verify", version=version, acceptance=acceptance, result=result)
+
+
+def distill_prompt(*, date: str, changes: str, version: str | None = None) -> str:
+    return render("distill", version=version, date=date, changes=changes)
+
+
+def topic_infer_prompt(*, summary: str, version: str | None = None) -> str:
+    return render("topic_infer", version=version, summary=summary)
+
+
+def context_block(ctx: JudgeContext, version: str | None = None) -> str:
+    return render(
+        "context",
+        version=version,
+        user_profile=ctx.user_profile,
+        recent="; ".join(ctx.recent_deliveries),
+        memory="; ".join(ctx.associated_memory),
     )
 
 
-def user_block(event: Event, ctx: JudgeContext) -> str:
-    return (
-        f"Current scene: {ctx.scene} (confidence {ctx.scene_confidence})\n"
-        f"Candidate event: {json.dumps(event.model_dump(mode='json'), ensure_ascii=False)}"
+def user_block(event: Event, ctx: JudgeContext, version: str | None = None) -> str:
+    return render(
+        "user",
+        version=version,
+        scene=ctx.scene,
+        scene_confidence=ctx.scene_confidence,
+        event_json=json.dumps(event.model_dump(mode="json"), ensure_ascii=False),
     )
+
+
+# Rendered from the active version at import: the stable prompt-cache prefix.
+SYSTEM_PROMPT = render("system")
+RETRY_PROMPT = render("retry")

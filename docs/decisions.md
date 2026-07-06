@@ -60,3 +60,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-05 · Decision.cost (existing field) now carries the USD judgment cost; the full accounting (stages, tokens, cache split, backend, prompt version) lives in Decision.trace — one JSON blob, no schema migration.
 - 2026-07-05 · Judge retries bill into the same usage total (the user pays for malformed-output retries too); usage is set by the transport layer, never trusted from the LLM output.
 - 2026-07-05 · Price table (judge/pricing.py) uses published list rates per backend family, not per model — per-model tables can arrive when someone needs them; unknown backends are free.
+- 2026-07-05 · Prompt versions are directories (judge/templates/v1/…): copy-dir-to-bump, no in-file version headers; the active version is the PROMPT_VERSION constant and per-judge prompt_version overrides it for eval --compare.
+- 2026-07-05 · prompts.SYSTEM_PROMPT/RETRY_PROMPT stay as module constants rendered from the active version at import — call sites and the prompt-cache-stable message layout are unchanged.
+- 2026-07-05 · eval --compare with the fixtures backend still writes a report but prints a note that fixtures never read prompts — the mechanics stay testable offline, meaningful diffs need a real backend.

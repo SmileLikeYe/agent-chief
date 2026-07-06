@@ -14,7 +14,7 @@ from core.schema import Task
 from core.state import State
 from dispatch.executor import Executor, _default_exec, run_task
 from judge.base import extract_json
-from judge.prompts import VERIFY_PROMPT
+from judge.prompts import verify_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ async def verify(
         # No verifier available: never bless unverified work.
         return VerifyResult(False, "no verifier configured; refusing to trust the claim")
 
-    prompt = VERIFY_PROMPT.format(
+    prompt = verify_prompt(
         acceptance=task.acceptance, result=task.result_summary or "(no result)"
     )
     raw = await ask(prompt)

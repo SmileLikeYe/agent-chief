@@ -257,7 +257,7 @@ class Brain:
             cached_tokens=usage.cached_tokens if usage else 0,
             usd_cost=cost,
             backend=backend,
-            prompt_version=prompts.PROMPT_VERSION,
+            prompt_version=getattr(self.judge, "prompt_version", None) or prompts.PROMPT_VERSION,
         )
         return Decision(
             event_id=event.id,

@@ -29,9 +29,15 @@ judge. If your change needs a key to test, it's designed wrong; add a cassette
    mic/screen/geofencing, no web UI, no cloud sync, no telemetry.
 3. **Ambiguity → simpler option + a one-line ADR** in
    [`docs/decisions.md`](docs/decisions.md).
-4. **Keep the core dependency-light.** Embeddings default to the
+4. **No prompt change merges without an eval diff report.** Prompts are
+   versioned Jinja2 templates under `judge/templates/<version>/`. To change
+   one: copy the current version dir to a new version, edit there, run
+   `chief eval --compare <old> <new>` against a real backend, and attach the
+   generated `eval/reports/compare-*.md` (agreement delta + flipped samples)
+   to the PR.
+5. **Keep the core dependency-light.** Embeddings default to the
    dependency-free `HashEmbedder`; heavyweight deps go behind optional extras.
-5. **Green on every commit**: `make lint test` must pass.
+6. **Green on every commit**: `make lint test` must pass.
 
 ## Commit style
 

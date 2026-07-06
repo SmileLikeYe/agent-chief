@@ -78,9 +78,11 @@ class HTTPJudge:
         base_url: str | None = None,
         transport=None,
         timeout: float = 60.0,
+        prompt_version: str | None = None,
     ):
         self.model = model
         self.api_key = api_key
+        self.prompt_version = prompt_version  # None → the active PROMPT_VERSION
         if base_url:
             self.base_url = base_url
         self._transport = transport
@@ -99,10 +101,11 @@ class HTTPJudge:
         from judge import prompts
 
         ctx = context or JudgeContext()
+        v = self.prompt_version
         messages = [
-            {"role": "system", "content": prompts.SYSTEM_PROMPT},
-            {"role": "system", "content": prompts.context_block(ctx)},
-            {"role": "user", "content": prompts.user_block(event, ctx)},
+            {"role": "system", "content": prompts.render("system", version=v)},
+            {"role": "system", "content": prompts.context_block(ctx, version=v)},
+            {"role": "user", "content": prompts.user_block(event, ctx, version=v)},
         ]
         last_error: Exception | None = None
         total = JudgeUsage()
@@ -120,5 +123,8 @@ class HTTPJudge:
                     return result
                 except Exception as exc:
                     last_error = exc
-                    messages = [*messages, {"role": "user", "content": prompts.RETRY_PROMPT}]
+                    messages = [
+                        *messages,
+                        {"role": "user", "content": prompts.render("retry", version=v)},
+                    ]
         raise JudgeError(f"{self.name}: malformed judge output after retries") from last_error
