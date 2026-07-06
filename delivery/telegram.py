@@ -79,6 +79,12 @@ async def handle_callback(data: str, state: State, policy_path: str | Path) -> N
         logger.warning("ignoring malformed callback data: %r", data)
         return
     _, signal, event_id, topic = parts
-    await state.save_feedback(event_id, signal, datetime.now(UTC))
+    from core.learner import apply_feedback
+
+    try:
+        await apply_feedback(state, event_id, signal, datetime.now(UTC))
+    except ValueError:
+        logger.warning("ignoring unknown feedback signal: %r", signal)
+        return
     if signal == "muted":
         add_muted_topic(policy_path, topic)  # Principle 3: effective immediately

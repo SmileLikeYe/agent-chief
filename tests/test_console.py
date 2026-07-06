@@ -17,13 +17,6 @@ from tests.helpers import StaticJudge, make_brain
 AUTH = {"Authorization": "Bearer sekrit"}
 
 
-class OkExecutor:
-    name = "noop"
-
-    async def run(self, task):
-        return "done: " + task.goal
-
-
 @pytest.fixture
 async def console(tmp_path):
     from ingest.http import create_app
@@ -31,7 +24,7 @@ async def console(tmp_path):
     async with State.open(tmp_path / "s.db") as state:
         brain = make_brain(state, tmp_path, judge=StaticJudge())
         app = create_app(brain, token="sekrit", learner=Learner(state),
-                         executor=OkExecutor())
+                         executor_config={})
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
             yield c, brain, state, tmp_path

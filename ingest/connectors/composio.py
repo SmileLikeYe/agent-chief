@@ -12,6 +12,9 @@ import base64
 import hashlib
 import hmac
 import json
+import time
+
+REPLAY_TOLERANCE_SECONDS = 300  # svix-style freshness window
 
 # trigger_slug prefix → Chief topic family (the unit of learning)
 TOPIC_FAMILIES = {
@@ -37,15 +40,32 @@ LINK_FIELDS = ("html_url", "url", "link", "permalink")
 def verify_signature(secret: str, msg_id: str, timestamp: str, body: bytes,
                      signature: str) -> bool:
     """svix-style: HMAC-SHA256(f"{id}.{timestamp}.") + raw body, base64."""
+    if not secret or not signature:
+        return False
     mac = hmac.new(secret.encode(), f"{msg_id}.{timestamp}.".encode() + body,
                    hashlib.sha256).digest()
     expected = base64.b64encode(mac).decode()
-    # the header may carry multiple space-separated "v1,<sig>" entries
-    for candidate in (signature or "").split():
+    # the header may carry multiple space-separated "v1,<sig>" entries; a
+    # non-ASCII/garbage entry must never crash compare_digest — skip it
+    for candidate in signature.split():
         candidate = candidate.removeprefix("v1,")
-        if hmac.compare_digest(candidate, expected):
-            return True
+        try:
+            if hmac.compare_digest(candidate, expected):
+                return True
+        except TypeError:
+            continue
     return False
+
+
+def timestamp_fresh(timestamp: str, now: float | None = None,
+                    tolerance: int = REPLAY_TOLERANCE_SECONDS) -> bool:
+    """Reject deliveries whose signed timestamp is outside the tolerance window
+    (anti-replay). Non-numeric/blank timestamps fail closed."""
+    try:
+        ts = float(timestamp)
+    except (TypeError, ValueError):
+        return False
+    return abs((now if now is not None else time.time()) - ts) <= tolerance
 
 
 def _topic(slug: str) -> str:
@@ -66,7 +86,9 @@ def _summary(slug: str, data: dict) -> str:
 def payload_to_event(envelope: dict) -> dict:
     """Composio v3 envelope → candidate-event payload for Brain.process."""
     meta = envelope.get("metadata") or {}
-    data = envelope.get("data") or {}
+    data = envelope.get("data")
+    if not isinstance(data, dict):  # batch/opaque payloads: wrap, never crash
+        data = {"value": data} if data is not None else {}
     slug = meta.get("trigger_slug", "UNKNOWN")
     app = slug.split("_", 1)[0].lower() or "unknown"
     payload = {

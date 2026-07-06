@@ -167,13 +167,10 @@ async def run_resident(once: bool = False) -> None:
 
         tasks: list[asyncio.Task] = []
         if not once:
-            from dispatch.executor import make_executor
-
-            default_exec = config.get("dispatch", {})
             tasks.extend(
                 await _start_network(
                     brain, state, ingest_cfg, delivery_cfg, learner=learner,
-                    executor=make_executor("claude_code", default_exec),
+                    executor_config=config.get("dispatch", {}),
                 )
             )
             tasks.append(
@@ -204,7 +201,6 @@ async def run_console() -> None:
     `chief ui` for people who don't run the resident daemon."""
     import uvicorn
 
-    from dispatch.executor import make_executor
     from ingest.http import create_app
     from judge.factory import make_judge
 
@@ -222,16 +218,17 @@ async def run_console() -> None:
         app = create_app(
             brain, token=ingest_cfg.get("webhook_token", "change-me"),
             learner=learner,
-            executor=make_executor("claude_code", config.get("dispatch", {})),
+            executor_config=config.get("dispatch", {}),
             connectors=config.get("connectors", {}),
         )
         port = int(ingest_cfg.get("webhook_port", 8787))
         Console().print(f"🎩 console: [bold]http://127.0.0.1:{port}/ui[/bold]")
-        await uvicorn.Server(uvicorn.Config(app, port=port, log_level="warning")).serve()
+        cfg = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+        await uvicorn.Server(cfg).serve()
 
 
 async def _start_network(
-    brain, state, ingest_cfg, delivery_cfg, learner=None, executor=None
+    brain, state, ingest_cfg, delivery_cfg, learner=None, executor_config=None
 ) -> list[asyncio.Task]:
     import uvicorn
 
@@ -242,11 +239,12 @@ async def _start_network(
     tasks = []
     app = create_app(
         brain, token=ingest_cfg.get("webhook_token", "change-me"),
-        learner=learner, executor=executor,
+        learner=learner, executor_config=executor_config,
         connectors=load_config().get("connectors", {}),
     )
     server = uvicorn.Server(
-        uvicorn.Config(app, port=int(ingest_cfg.get("webhook_port", 8787)), log_level="warning")
+        uvicorn.Config(app, host="127.0.0.1",
+                       port=int(ingest_cfg.get("webhook_port", 8787)), log_level="warning")
     )
     tasks.append(asyncio.ensure_future(server.serve()))
 

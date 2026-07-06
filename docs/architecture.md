@@ -89,10 +89,12 @@ Judgment is a claim too, so v3.1 makes it inspectable end to end:
 | `core/` | schema, state, brain loop, 3-stage scorer, learner, digest, policy |
 | `context/` | scene providers + inference + scene policy table |
 | `judge/` | LLM backends (ollama/deepseek/anthropic/openai/fixtures) + all prompts |
-| `ingest/` | webhook, MCP server, normalization, github/rss pollers |
+| `ingest/` | webhook + /v1/feedback + console /api, MCP server, normalization, github/rss pollers |
+| `ingest/connectors/` | connector registry + composio adapter (500+ apps) |
 | `dispatch/` | executors (claude_code, whitelisted shell, openclaw) + verification |
 | `memory/` | memory store, TTL/archive, association |
 | `delivery/` | level abstraction + terminal/desktop/telegram channels |
 | `demo/` | offline day-of-engineer replay (the 60-second wow) |
 | `eval/` | golden dataset, capability/regression eval runner, prompt compare |
+| `ui/` | local web console (one static HTML file, served on 127.0.0.1) |
 | `skills/` | claude-code + openclaw SKILL.md packaging (propose-and-obey) |

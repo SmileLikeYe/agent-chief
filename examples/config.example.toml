@@ -32,3 +32,9 @@ github = false                      # poll `gh` notifications every 5 min
 rss_urls = []                       # e.g. ["https://hnrss.org/frontpage"]
 webhook_token = "change-me"         # bearer token for POST /v1/events
 webhook_port = 8787
+
+[connectors.composio]
+# composio.dev trigger webhooks → /v1/connectors/composio (HMAC-verified).
+# Set via `chief connect composio --secret whsec_…`; point Composio's webhook
+# subscription at https://<your-tunnel>/v1/connectors/composio
+webhook_secret = ""

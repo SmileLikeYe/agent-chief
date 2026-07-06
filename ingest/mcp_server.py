@@ -7,7 +7,7 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from core.brain import Brain
-from core.learner import build_tact_report
+from core.learner import apply_feedback, build_tact_report
 
 
 def create_mcp(brain: Brain) -> FastMCP:
@@ -22,9 +22,17 @@ def create_mcp(brain: Brain) -> FastMCP:
 
     @mcp.tool
     async def feedback(event_id: str, signal: str) -> str:
-        """Record a user-reaction signal (acted/read/dismissed_fast/muted/...)."""
-        await brain.state.save_feedback(event_id, signal, datetime.now(UTC))
-        return "ok"
+        """Record a user-reaction signal and learn from it. Signals include the
+        natural should_interrupt / should_not_interrupt, plus acted / read /
+        dismissed_fast / muted / task_ok / task_fail."""
+        try:
+            learned = await apply_feedback(
+                brain.state, event_id, signal, datetime.now(UTC),
+                classifier=brain.classifier,
+            )
+        except ValueError as exc:
+            return f"error: {exc}"
+        return "learned" if learned else "recorded"
 
     @mcp.tool
     async def digest(now: bool = False) -> dict:

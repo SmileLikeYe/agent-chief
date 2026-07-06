@@ -81,3 +81,24 @@ def test_connect_unknown_source_fails_cleanly(tmp_path, monkeypatch):
 
     result = runner.invoke(app, ["connect", "carrier-pigeon"])
     assert result.exit_code != 0
+
+
+def test_connect_refuses_to_corrupt_deep_config(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    original = ('[connectors.composio.headers]\nx = "y"\n')
+    (tmp_path / "config.toml").write_text(original, encoding="utf-8")
+    from cli.main import app
+
+    result = runner.invoke(app, ["connect", "github"])
+    assert result.exit_code != 0  # refuses rather than writing invalid TOML
+    assert (tmp_path / "config.toml").read_text(encoding="utf-8") == original  # untouched
+
+
+def test_connect_backs_up_before_rewrite(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    (tmp_path / "config.toml").write_text('[llm]\nbackend = "ollama"\n', encoding="utf-8")
+    from cli.main import app
+
+    runner.invoke(app, ["connect", "github"])
+    assert (tmp_path / "config.toml.bak").exists()
+    assert 'backend = "ollama"' in (tmp_path / "config.toml.bak").read_text(encoding="utf-8")

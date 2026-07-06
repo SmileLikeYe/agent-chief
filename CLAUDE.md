@@ -8,7 +8,7 @@ throughout the code point there). Build log: `PROGRESS.md`.
 ## Commands
 
 ```bash
-make test           # uv run pytest (265 tests, offline, no keys needed)
+make test           # uv run pytest (301 tests, offline, no keys needed)
 make lint           # uv run ruff check .
 make demo           # offline day-of-engineer replay (deterministic)
 make readme-metrics # regenerate the quantified README first screen
@@ -17,6 +17,8 @@ uv run pytest tests/test_routing.py -k name   # single test
 uv run chief eval   # regression (demo 24, must be 100%) + capability (golden 200)
 uv run chief trace <event_id>   # replay one decision chain with costs
 uv run chief lite '<event json>'  # zero-daemon judgment (skills use this)
+uv run chief ui                   # local web console at 127.0.0.1:8787/ui
+uv run chief connect composio --secret …   # + github / rss; chief sources
 ```
 
 Everything runs through `uv`. Python 3.12. No network, no API keys, and no

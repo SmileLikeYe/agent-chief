@@ -31,7 +31,9 @@ def envelope(slug, data, msg_id="msg_1"):
     }
 
 
-def sign(body: bytes, msg_id="wh_1", ts="1751790000"):
+def sign(body: bytes, msg_id="wh_1", ts=None):
+    import time as _t
+    ts = ts or str(int(_t.time()))
     mac = hmac.new(SECRET.encode(), f"{msg_id}.{ts}.".encode() + body,
                    hashlib.sha256).digest()
     return {"webhook-id": msg_id, "webhook-timestamp": ts,
@@ -127,3 +129,20 @@ async def test_unconfigured_connector_returns_503(tmp_path):
             resp = await c.post("/v1/connectors/composio", content="{}",
                                 headers=sign(b"{}"))
             assert resp.status_code == 503
+
+
+async def test_stale_delivery_is_rejected(client):
+    body = json.dumps(envelope("GITHUB_COMMIT_EVENT", {"message": "old"}))
+    stale = sign(body.encode(), ts="1000000000")  # year 2001, well outside tolerance
+    resp = await client.post("/v1/connectors/composio", content=body, headers=stale)
+    assert resp.status_code == 401  # replay protection
+
+
+async def test_non_dict_data_does_not_crash():
+    for data in ([1, 2, 3], "plain string", None):
+        p = payload_to_event(envelope("X_BATCH", data))
+        assert isinstance(p["summary"], str) and p["topic"].startswith("composio")
+
+
+def test_non_ascii_signature_header_never_crashes():
+    assert verify_signature("s", "id", "1", b"{}", "v1,\xe9garbage") is False

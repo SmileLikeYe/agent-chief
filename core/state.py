@@ -187,22 +187,24 @@ class State:
         return {r[0]: r[1] for r in rows}
 
     async def recent_decisions(self, limit: int = 50, q: str | None = None) -> list[tuple]:
-        """Newest-first (Event, Decision) pairs for the console history view."""
+        """Newest-first (Event, Decision) pairs for the console history view.
+        The text filter runs in SQL so search reaches beyond the newest `limit`
+        rows (a match at position 500 must still be found)."""
+        where = ""
+        params: tuple = ()
+        if q:
+            where = (" WHERE lower(json_extract(e.data,'$.summary')) LIKE ?"
+                     " OR lower(json_extract(e.data,'$.topic')) LIKE ?")
+            like = f"%{q.lower()}%"
+            params = (like, like)
         rows = await self._db.execute_fetchall(
             "SELECT e.data, d.data FROM decisions d JOIN events e ON e.id = d.event_id"
-            " ORDER BY e.received_at DESC LIMIT ?",
-            (limit,),
+            f"{where} ORDER BY e.received_at DESC LIMIT ?",
+            (*params, limit),
         )
-        pairs = [
+        return [
             (Event.model_validate_json(r[0]), Decision.model_validate_json(r[1])) for r in rows
         ]
-        if q:
-            needle = q.lower()
-            pairs = [
-                (e, d) for e, d in pairs
-                if needle in e.summary.lower() or needle in e.topic.lower()
-            ]
-        return pairs
 
     async def decision_stats(self, since=None) -> dict:
         """Aggregate cost accounting over decisions (Step 26), windowed by event

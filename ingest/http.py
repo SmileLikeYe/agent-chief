@@ -7,16 +7,20 @@ Default port 8787, simple bearer token. Example:
       -d '{"source":"my-agent","topic":"dev.ci","summary":"CI failed on main"}'
 """
 
+import hmac
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 
 from core.brain import Brain
 from core.schema import Decision
 
 DEFAULT_PORT = 8787
+MAX_WEBHOOK_BYTES = 1 << 20  # 1 MiB — reject oversized bodies before buffering
 
 
 def create_app(
-    brain: Brain, token: str, learner=None, executor=None, connectors: dict | None = None
+    brain: Brain, token: str, learner=None, executor_config: dict | None = None,
+    connectors: dict | None = None,
 ) -> FastAPI:
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import version as pkg_version
@@ -29,7 +33,7 @@ def create_app(
 
     def check_auth(request: Request) -> None:
         header = request.headers.get("authorization", "")
-        if header != f"Bearer {token}":
+        if not hmac.compare_digest(header, f"Bearer {token}"):  # constant-time
             raise HTTPException(status_code=401, detail="bad bearer token")
 
     @app.post("/v1/events", response_model=Decision)
@@ -59,7 +63,11 @@ def create_app(
 
     @app.post("/v1/connectors/composio", response_model=Decision)
     async def composio_webhook(request: Request) -> Decision:
-        from ingest.connectors.composio import payload_to_event, verify_signature
+        from ingest.connectors.composio import (
+            payload_to_event,
+            timestamp_fresh,
+            verify_signature,
+        )
 
         secret = (connectors or {}).get("composio", {}).get("webhook_secret")
         if not secret:
@@ -67,7 +75,13 @@ def create_app(
                 status_code=503,
                 detail="composio connector not configured — run: chief connect composio",
             )
+        # cap the body before buffering it all (endpoint is tunnel-exposed)
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > MAX_WEBHOOK_BYTES:
+            raise HTTPException(status_code=413, detail="payload too large")
         body = await request.body()
+        if len(body) > MAX_WEBHOOK_BYTES:
+            raise HTTPException(status_code=413, detail="payload too large")
         ok = verify_signature(
             secret,
             request.headers.get("webhook-id", ""),
@@ -77,6 +91,8 @@ def create_app(
         )
         if not ok:
             raise HTTPException(status_code=401, detail="bad webhook signature")
+        if not timestamp_fresh(request.headers.get("webhook-timestamp", "")):
+            raise HTTPException(status_code=401, detail="stale webhook (replay?)")
         envelope = await request.json()
         return await brain.process(payload_to_event(envelope))
 
@@ -155,11 +171,15 @@ def create_app(
             await brain.state.save_task(task)
             return {"ok": True, "status": task.status}
         if action == "approve":
-            if executor is None:
-                raise HTTPException(status_code=409, detail="no executor configured")
             from dispatch.acceptance import dispatch_and_verify
+            from dispatch.executor import make_executor
 
-            task, _ask = await dispatch_and_verify(brain.state, task, executor)
+            try:
+                task_exec = make_executor(task.executor, executor_config or {})
+            except ValueError:
+                raise HTTPException(  # noqa: B904
+                    status_code=409, detail=f"no executor for {task.executor!r}")
+            task, _ask = await dispatch_and_verify(brain.state, task, task_exec)
             return {"ok": True, "status": task.status}
         raise HTTPException(status_code=422, detail="action must be approve or reject")
 

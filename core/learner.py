@@ -30,6 +30,21 @@ KNOWN_SIGNALS = frozenset(SIGNAL_EFFECTS) | {
     "promote", "muted", "task_ok", "task_fail", "shadow_good", "shadow_bad",
 }
 
+
+async def apply_feedback(state, event_id: str, signal: str, at, classifier=None) -> bool:
+    """One entry point behind every surface (HTTP/MCP/Telegram/UI): validate the
+    signal, then learn from it when the event+decision are still on hand,
+    otherwise just record the row. Returns True iff weights were updated."""
+    if signal not in KNOWN_SIGNALS:
+        raise ValueError(f"unknown feedback signal: {signal!r}")
+    event = await state.load_event(event_id)
+    decision = await state.load_decision(event_id)
+    if event and decision:
+        await Learner(state, classifier=classifier).record(event, decision, signal, at=at)
+        return True
+    await state.save_feedback(event_id, signal, at)
+    return False
+
 WEIGHT_MIN, WEIGHT_MAX = 0.02, 0.5
 THRESHOLD_MIN, THRESHOLD_MAX = 0.35, 0.95
 PROPENSITY_ALPHA = 0.2

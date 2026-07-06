@@ -91,6 +91,36 @@ Chief exposes an MCP server (`python -m ingest.mcp_server`, stdio) with tools:
 - `policy(action, text?)` — read (`show`) or append (`edit`) POLICY.md
 - `stats(days=7)` — tact-report counters
 
+## 2b. Feedback — teach Chief your preferences
+
+```
+POST http://<chief-host>:8787/v1/feedback
+Authorization: Bearer <token>
+{"event_id": "evt_...", "signal": "should_not_interrupt"}
+```
+
+Signals (strongest first): **`should_interrupt`** / **`should_not_interrupt`**
+(natural feedback — "this deserved my attention" / "this didn't"), then
+`acted`, `read`, `dismissed_fast`, `muted`, `task_ok`, `task_fail`. Known but
+unroutable events still record the signal (`{"learned": false}`); unknown
+signals get `422`. MCP agents use the `feedback` tool; the console and
+Telegram expose 👍/👎 buttons that post the two natural signals.
+
+## 2c. Connectors — out-of-the-box sources
+
+Chief ingests from any [Composio](https://composio.dev) trigger:
+
+```
+POST http://<chief-host>:8787/v1/connectors/composio
+webhook-id / webhook-timestamp / webhook-signature   (svix-style HMAC)
+```
+
+The v3 envelope (`{id, metadata:{trigger_slug,...}, data, timestamp}`) is
+HMAC-verified against `[connectors.composio].webhook_secret`, replay-checked
+(±5 min), and translated into a candidate event (`trigger_slug` → topic
+family). Wire it with `chief connect composio --secret whsec_…`. The
+connector registry documents open slots for zapier/n8n and MCP-push agents.
+
 ## 3. Rules of good citizenship
 
 1. **Never send empty reports.** "All clear / nothing new / check complete"

@@ -62,7 +62,10 @@ async function api(path, opts={}) {
   if (r.status === 401) { localStorage.removeItem("chief_token"); TOKEN=""; throw new Error("bad token — reload to retry"); }
   return r.json();
 }
-const esc = t => (t||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = t => (t==null?"":String(t)).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// event/task ids are attacker-shaped (Event.id is free-form) — never put them
+// in inline handlers; carry them in escaped data-attrs and bind by delegation.
+const attr = t => esc(t);
 
 function decisionCard(row) {
   const e = row.event, d = row.decision;
@@ -76,15 +79,22 @@ function decisionCard(row) {
       · $${(d.cost||0).toFixed(4)}</div>
     <div class="dim">↳ ${esc(d.reason)}</div>
     <div class="row" style="margin-top:6px">
-      <button class="act" onclick="fb('${e.id}','should_interrupt',this)">👍 worth my attention</button>
-      <button class="act" onclick="fb('${e.id}','should_not_interrupt',this)">👎 don't bother me</button>
+      <button class="act" data-fb="should_interrupt" data-id="${attr(e.id)}">👍 worth my attention</button>
+      <button class="act" data-fb="should_not_interrupt" data-id="${attr(e.id)}">👎 don't bother me</button>
     </div>
   </div>`;
 }
-async function fb(id, signal, btn) {
-  await api("/v1/feedback", {method:"POST", body: JSON.stringify({event_id:id, signal})});
-  btn.textContent = "✓ learned"; btn.disabled = true;
-}
+document.addEventListener("click", async e => {
+  const fb = e.target.closest("[data-fb]");
+  if (fb) {
+    await api("/v1/feedback", {method:"POST",
+      body: JSON.stringify({event_id: fb.dataset.id, signal: fb.dataset.fb})});
+    fb.textContent = "✓ learned"; fb.disabled = true; return;
+  }
+  const task = e.target.closest("[data-task]");
+  if (task) { await api("/api/tasks/" + encodeURIComponent(task.dataset.task),
+    {method:"POST", body: JSON.stringify({action: task.dataset.action})}); render("tasks"); }
+});
 
 const views = {
   async today() {
@@ -125,8 +135,8 @@ const views = {
           <strong>${esc(t.goal)}</strong></div>
         <div class="dim">${esc(t.executor)} · accept: ${esc(t.acceptance)} ${t.result_summary ? "· "+esc(t.result_summary) : ""}</div>
         ${t.status==="pending" ? `<div class="row" style="margin-top:6px">
-          <button class="act" onclick="taskAct('${t.id}','approve')">✅ Approve &amp; run</button>
-          <button class="act" onclick="taskAct('${t.id}','reject')">🚫 Reject</button></div>` : ""}
+          <button class="act" data-task="${attr(t.id)}" data-action="approve">✅ Approve &amp; run</button>
+          <button class="act" data-task="${attr(t.id)}" data-action="reject">🚫 Reject</button></div>` : ""}
       </div>`).join("");
   },
   async sources() {
@@ -141,10 +151,6 @@ const views = {
 async function savePolicy() {
   await api("/api/policy", {method:"PUT", body: JSON.stringify({text: $("#policy").value})});
   $("#saved").textContent = "saved — live now";
-}
-async function taskAct(id, action) {
-  await api("/api/tasks/" + id, {method:"POST", body: JSON.stringify({action})});
-  render("tasks");
 }
 async function render(name) {
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === name));

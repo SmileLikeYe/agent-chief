@@ -19,37 +19,60 @@ from core.config import chief_home, config_path, load_config
 console = Console(soft_wrap=True, highlight=False)  # keep URLs copy-pastable
 
 
-def _serialize(cfg: dict) -> str:
-    def value(v):
-        if isinstance(v, bool):
-            return "true" if v else "false"
-        if isinstance(v, int | float):
-            return str(v)
-        if isinstance(v, list):
-            return "[" + ", ".join(json.dumps(i) for i in v) + "]"
-        return json.dumps(v)
+class UnsupportedConfig(Exception):
+    """The existing config uses TOML our tiny serializer can't round-trip."""
 
+
+def _scalar(v) -> str:
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int | float):
+        return str(v)
+    if isinstance(v, str):
+        return json.dumps(v)
+    if isinstance(v, list) and all(isinstance(i, str | int | float | bool) for i in v):
+        return "[" + ", ".join(json.dumps(i) for i in v) + "]"
+    raise UnsupportedConfig(f"cannot serialize value {v!r}")
+
+
+def _serialize(cfg: dict) -> str:
+    # our schema is flat sections plus one connectors.* level; anything deeper
+    # (or a root-level scalar, or a list of tables) we refuse rather than corrupt
     lines: list[str] = []
     for section, body in cfg.items():
+        if not isinstance(body, dict):
+            raise UnsupportedConfig(f"root-level key {section!r} is not a section")
         scalars = {k: v for k, v in body.items() if not isinstance(v, dict)}
         tables = {k: v for k, v in body.items() if isinstance(v, dict)}
         if scalars or not tables:
             lines.append(f"[{section}]")
-            lines += [f"{k} = {value(v)}" for k, v in scalars.items()]
+            lines += [f"{k} = {_scalar(v)}" for k, v in scalars.items()]
             lines.append("")
         for sub, subbody in tables.items():
+            if any(isinstance(v, dict) for v in subbody.values()):
+                raise UnsupportedConfig(f"[{section}.{sub}] nests too deep")
             lines.append(f"[{section}.{sub}]")
-            lines += [f"{k} = {value(v)}" for k, v in subbody.items()]
+            lines += [f"{k} = {_scalar(v)}" for k, v in subbody.items()]
             lines.append("")
     return "\n".join(lines)
 
 
 def _update_config(mutate) -> dict:
     path = config_path()
-    cfg = tomllib.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    raw = path.read_text(encoding="utf-8") if path.exists() else ""
+    cfg = tomllib.loads(raw) if raw else {}
     mutate(cfg)
+    try:
+        rendered = _serialize(cfg)
+    except UnsupportedConfig as exc:
+        raise SystemExit(
+            f"chief connect can't safely rewrite {path} ({exc}).\n"
+            f"Edit the config by hand — add the section shown in the docs — and re-run."
+        ) from exc
     chief_home().mkdir(parents=True, exist_ok=True)
-    path.write_text(_serialize(cfg), encoding="utf-8")
+    if raw:
+        path.with_suffix(".toml.bak").write_text(raw, encoding="utf-8")  # keep a backup
+    path.write_text(rendered, encoding="utf-8")
     return cfg
 
 
