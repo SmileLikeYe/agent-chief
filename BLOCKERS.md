@@ -29,3 +29,12 @@ Log of steps that needed human-only resources; implemented against mocks/fixture
 - Un-mock: copy skills/claude-code/ into a project's .claude/skills/, run a
   watcher that finds something, verify the agent calls `chief lite` and obeys
   the route; for OpenClaw follow docs/openclaw-manual-test.md.
+
+## Step 34 · Composio connector — live verification (v3.2)
+- Status: adapter complete against Composio's documented v3 envelope +
+  svix-style HMAC signatures; verified with signed fixtures (GitHub PR,
+  Gmail, Slack triggers). A live round-trip needs a composio.dev account,
+  a webhook subscription pointed at this machine (tunnel), and its secret.
+- Un-mock: `chief connect composio --secret <whsec_...>`, subscribe
+  triggers in the Composio dashboard to https://<tunnel>/v1/connectors/composio,
+  fire a test trigger, watch `chief ui` History.

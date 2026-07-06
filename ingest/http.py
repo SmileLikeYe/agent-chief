@@ -15,7 +15,9 @@ from core.schema import Decision
 DEFAULT_PORT = 8787
 
 
-def create_app(brain: Brain, token: str, learner=None, executor=None) -> FastAPI:
+def create_app(
+    brain: Brain, token: str, learner=None, executor=None, connectors: dict | None = None
+) -> FastAPI:
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import version as pkg_version
 
@@ -52,6 +54,31 @@ def create_app(brain: Brain, token: str, learner=None, executor=None) -> FastAPI
             return {"ok": True, "learned": True}
         await brain.state.save_feedback(event_id, signal, now)
         return {"ok": True, "learned": False}
+
+    # --- connectors (SPEC v3.2 Step 34): signed pushes from composio.dev ---
+
+    @app.post("/v1/connectors/composio", response_model=Decision)
+    async def composio_webhook(request: Request) -> Decision:
+        from ingest.connectors.composio import payload_to_event, verify_signature
+
+        secret = (connectors or {}).get("composio", {}).get("webhook_secret")
+        if not secret:
+            raise HTTPException(
+                status_code=503,
+                detail="composio connector not configured — run: chief connect composio",
+            )
+        body = await request.body()
+        ok = verify_signature(
+            secret,
+            request.headers.get("webhook-id", ""),
+            request.headers.get("webhook-timestamp", ""),
+            body,
+            request.headers.get("webhook-signature", ""),
+        )
+        if not ok:
+            raise HTTPException(status_code=401, detail="bad webhook signature")
+        envelope = await request.json()
+        return await brain.process(payload_to_event(envelope))
 
     # --- local web console (SPEC v3.2 Step 33; 127.0.0.1 only, token-gated) ---
 

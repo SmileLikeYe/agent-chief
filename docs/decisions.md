@@ -76,3 +76,4 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-06 · POST /v1/feedback stores feedback even for unknown/expired events (learned=false) — feedback must never be droppable just because retention beat it.
 - 2026-07-06 · The console is one static HTML file (vanilla JS, no build toolchain) served by the existing FastAPI app on 127.0.0.1 — same port, same bearer token, zero new dependencies; SPEC §13's hosted-UI ban stands untouched.
 - 2026-07-06 · Console task approval authorizes EXECUTION, not trust: dispatch_and_verify still runs the acceptance check, so "done is a claim, not a proof" survives the human click.
+- 2026-07-06 · Composio adapter is push-only (their webhook subscription), translated at the boundary into the one ingest protocol; topic families map trigger_slug prefixes (GITHUB_→dev.github.*, GMAIL_→comms.email.*, …) with a composio.<slug> fallback so unknown apps still learn per-topic.

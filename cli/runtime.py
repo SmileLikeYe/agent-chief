@@ -223,6 +223,7 @@ async def run_console() -> None:
             brain, token=ingest_cfg.get("webhook_token", "change-me"),
             learner=learner,
             executor=make_executor("claude_code", config.get("dispatch", {})),
+            connectors=config.get("connectors", {}),
         )
         port = int(ingest_cfg.get("webhook_port", 8787))
         Console().print(f"🎩 console: [bold]http://127.0.0.1:{port}/ui[/bold]")
@@ -242,6 +243,7 @@ async def _start_network(
     app = create_app(
         brain, token=ingest_cfg.get("webhook_token", "change-me"),
         learner=learner, executor=executor,
+        connectors=load_config().get("connectors", {}),
     )
     server = uvicorn.Server(
         uvicorn.Config(app, port=int(ingest_cfg.get("webhook_port", 8787)), log_level="warning")
