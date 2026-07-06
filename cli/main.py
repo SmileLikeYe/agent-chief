@@ -256,6 +256,41 @@ def digest(now: bool = typer.Option(False, "--now", help="Send the digest immedi
 
 
 @app.command()
+def connect(
+    source: str = typer.Argument(..., help="composio | github | rss"),
+    secret: str = typer.Option(None, "--secret", help="Composio webhook secret (whsec_…)."),
+    url: str = typer.Option(None, "--url", help="RSS feed url."),
+):
+    """One-click source connection (SPEC v3.2 Step 35)."""
+    from cli import connect as c
+
+    if source == "composio":
+        if not secret:
+            typer.echo("need --secret whsec_… (Composio dashboard → webhook subscription)")
+            raise typer.Exit(code=2)
+        c.connect_composio(secret)
+    elif source == "github":
+        c.connect_github()
+    elif source == "rss":
+        if not url:
+            typer.echo("need --url https://…")
+            raise typer.Exit(code=2)
+        c.connect_rss(url)
+    else:
+        typer.echo(f"unknown source {source!r} — try: composio, github, rss "
+                   "(or POST /v1/events directly, docs/protocol.md)")
+        raise typer.Exit(code=2)
+
+
+@app.command()
+def sources():
+    """List connectors and their status (SPEC v3.2 Step 35)."""
+    from cli.connect import show_sources
+
+    show_sources()
+
+
+@app.command()
 def ui():
     """Serve the local web console at http://127.0.0.1:8787/ui (SPEC v3.2)."""
     import asyncio
