@@ -58,6 +58,29 @@ New installs start in **shadow mode**: interrupts degrade to annotated digest
 entries with ✓/✗ grading until 7 days pass or 50 samples accumulate. `chief
 report` renders the Tact Report at any time.
 
+## Accountability layer (v3.1)
+
+Judgment is a claim too, so v3.1 makes it inspectable end to end:
+
+- **Trace + cost** — every Decision records per-stage latency, tokens
+  (cache-aware), and USD cost at per-model list prices (`judge/pricing.py`);
+  `chief trace <event_id>` replays the whole chain. The Tact Report adds
+  %-events-reaching-the-LLM, cache hit rate, and spend for its window.
+- **Eval harness** (`eval/`) — a 200-case golden dataset. CAPABILITY evals
+  measure the judge and may move; REGRESSION evals (the demo 24) are pinned
+  at 100% in CI. `chief eval [--backend X]` writes bucketed markdown reports.
+- **Prompt governance** — prompts are versioned Jinja2 templates
+  (`judge/templates/<v>/`); the version is stamped into every audit record,
+  and `chief eval --compare v1 v2` produces the flipped-samples diff that any
+  prompt change must carry (CONTRIBUTING.md).
+- **Graceful degradation** — if the judge backend fails (malformed output,
+  timeout, down), routing falls back to rules-only conservatism: whatever
+  passes stage 1 goes to digest — never interrupt while blind, never drop —
+  flagged `degraded=true`, auto-recovering, visible in `chief status`.
+- **`chief lite`** — the same Brain against an in-memory state for one-shot
+  judgment-only callers (what the Claude Code / OpenClaw skills invoke);
+  zero-config safety comes from the degradation path, not a second pipeline.
+
 ## Module map
 
 | dir | role |
@@ -71,4 +94,5 @@ report` renders the Tact Report at any time.
 | `memory/` | memory store, TTL/archive, association |
 | `delivery/` | level abstraction + terminal/desktop/telegram channels |
 | `demo/` | offline day-of-engineer replay (the 60-second wow) |
-| `skills/openclaw/` | SKILL.md + file-protocol hook |
+| `eval/` | golden dataset, capability/regression eval runner, prompt compare |
+| `skills/` | claude-code + openclaw SKILL.md packaging (propose-and-obey) |

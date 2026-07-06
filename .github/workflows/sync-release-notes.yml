@@ -19,7 +19,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          versions=$(grep -oP '^## \[\K[^\]]+' CHANGELOG.md)
+          # semver only, anchored to the closing bracket: "[Unreleased]" and
+          # malformed headings never become version tokens; no-match is a no-op
+          versions=$(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+(?=\])' CHANGELOG.md || true)
           for version in $versions; do
             tag="v$version"
             # tag existence is a remote fact — never trust the local checkout

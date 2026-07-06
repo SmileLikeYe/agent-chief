@@ -30,10 +30,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # only the changelog's newest version may take the Latest badge —
+          # tagging an old hotfix must not steal it
+          newest=$(grep -oP '^## \[\K[0-9]+\.[0-9]+\.[0-9]+(?=\])' CHANGELOG.md | head -1)
+          latest_flag="--latest=false"
+          [ "$GITHUB_REF_NAME" = "v$newest" ] && latest_flag="--latest"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md "$latest_flag"
             gh release upload "$GITHUB_REF_NAME" dist/* --clobber
           else
             gh release create "$GITHUB_REF_NAME" dist/* \
-              --title "$GITHUB_REF_NAME" --notes-file notes.md
+              --title "$GITHUB_REF_NAME" --notes-file notes.md "$latest_flag"
           fi
