@@ -508,6 +508,38 @@ Maintain this table; update the row in the same commit that completes the step:
 - Accept: every number in README is reproducible via `make readme-metrics`.
 - Commit: `docs(readme): quantified value proposition`
 
+### Phase 6 — Product Surface (v3.2 amendment, Steps 32–36)
+
+> Owner directive (2026-07-06): as an open-source project the concept is
+> clear; as a product for ordinary people three things are missing — a real
+> UI, out-of-the-box sources, and a natural feedback mechanism. §13 revised
+> accordingly (local-only console; connectors for ingest).
+
+**Step 32 · Natural feedback — "should/shouldn't have interrupted me"**
+- Two first-class signals: `should_interrupt` (this deserved my attention) and `should_not_interrupt` (this didn't). Learner effects stronger than passive signals; wired through the existing feedback table, MCP `feedback` tool, webhook `POST /v1/feedback`, and Telegram buttons.
+- Accept: simulated feedback measurably moves the topic's future score in the right direction on both signals; HTTP + MCP paths covered by tests.
+- Commit: `feat(learner): natural feedback signals`
+
+**Step 33 · Local web console**
+- Served by `chief run` (and standalone `chief ui`) on 127.0.0.1, token-gated, zero build toolchain (one static HTML+JS file shipped in the wheel). Views: today (digest queue + recent decisions with reason/score/cost), history (searchable decisions, per-event trace), rules (POLICY.md view/edit), tasks (pending dispatch approve/reject), sources (connector status), and 👍/👎 natural-feedback buttons on every decision.
+- Accept: endpoint tests for every /api route (auth incl. 401); UI file lints as valid HTML; POLICY.md edits from the UI take effect on the next decision; approve/reject transitions a pending task.
+- Commit: `feat(ui): local web console`
+
+**Step 34 · Connector framework + Composio**
+- `ingest/connectors/` registry (name → adapter). First adapter: **Composio** — HMAC-verified inbound webhook (`POST /v1/connectors/composio`, v3 envelope: metadata.trigger_slug + data), trigger_slug → topic mapping (GitHub/Gmail/Slack families), summary extraction with graceful fallback. Registry leaves documented slots for future channels (zapier, n8n, MCP-push).
+- Accept: signature verification rejects tampered payloads; GitHub/Gmail/Slack trigger fixtures produce well-formed Events routed by the real pipeline; unknown slugs still ingest with a generic topic.
+- Commit: `feat(ingest): connector framework with composio adapter`
+
+**Step 35 · One-click connect**
+- `chief connect <source>` CLI: writes config, prints the exact next actions (Composio dashboard steps / tokens), verifies inbound reachability where possible; `chief sources` lists connector status. The console's Sources view mirrors it.
+- Accept: `chief connect composio --secret X` round-trips config and a signed test event; `chief sources` reflects it.
+- Commit: `feat(cli): one-click source connection`
+
+**Step 36 · Product docs + v0.3.0**
+- README/zh gain the console screenshot placeholder + connectors section; CHANGELOG 0.3.0; version bump; tag v0.3.0 (release automation from v3.1 does the rest).
+- Accept: release-check green from the wheel incl. `chief ui` assets; v0.3.0 release live with artifacts.
+- Commit: `chore(release): v0.3.0 — product surface`
+
 ## 10. Config Sample (`~/.chief/config.toml`)
 ```toml
 [llm]      backend = "deepseek"   model = "deepseek-v4-flash"   # or ollama/qwen3-4b
@@ -528,10 +560,19 @@ Maintain this table; update the row in the same commit that completes the step:
 ## 12. Naming Note
 Project name **Chief**. Before creating the repo, check availability of `agent-chief`, `chiefd`, `cortexd` on GitHub and PyPI; prefer the shortest available. All code, docs, comments, commit messages in English.
 
-## 13. Explicitly OUT of v1 (goes to ROADMAP.md; appearing in code = violation)
+## 13. Explicitly OUT of scope (appearing in code = violation)
+
+> Revised by the owner in v3.2 (2026-07-06). Two items were re-scoped, the
+> rest remain absolute:
+> - a **local web console** (served by `chief run` on 127.0.0.1 only, single
+>   user, token-gated) is now IN scope — "Web UI" here always meant a hosted
+>   multi-user product, which stays forbidden;
+> - Slack/Gmail/GitHub **as ingest sources** (via connectors) are IN scope —
+>   the ban below is on *delivery* through chat apps, which stands.
+
 - Always-on microphone / screen-content understanding / geofencing (keep the provider interface ready; the hardware layer is a future premium provider)
-- Web UI, multi-user, cloud sync
+- Hosted/multi-user UI, accounts, cloud sync, telemetry
 - Arbitrary shell execution, homegrown agent executors
-- Slack / Discord / WeChat delivery (v2)
-- Real-time association (v1: at-ingest lookup + digest-time batch only)
+- Slack / Discord / WeChat **delivery** (ingest via connectors is allowed)
+- Real-time association (at-ingest lookup + digest-time batch only)
 - Heavy ML (EMA + threshold tuning is enough and stays explainable)
