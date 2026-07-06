@@ -135,3 +135,21 @@ async def test_mcp_tools(tmp_path):
 
             policy_text = await client.call_tool("policy", {"action": "show"})
             assert isinstance(policy_text.data, str)
+
+
+async def test_dunder_topics_are_namespaced_at_ingest():
+    """Reserved-namespace hardening: external topics can never collide with
+    internal kv markers (__shadow__, __threshold_adjust__)."""
+    from ingest.normalize import normalize
+
+    for hostile, safe in (
+        ("__shadow__", "ext.shadow"),
+        ("__threshold_adjust__", "ext.threshold_adjust"),
+        ("__degraded__", "ext.degraded"),
+    ):
+        ev = await normalize({"source": "webhook", "topic": hostile, "summary": "probe"})
+        assert ev.topic == safe
+
+    # normal topics pass through untouched
+    ev = await normalize({"source": "webhook", "topic": "dev.ci", "summary": "ok"})
+    assert ev.topic == "dev.ci"

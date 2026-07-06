@@ -155,3 +155,21 @@ def test_cli_status_healthy_when_not_degraded(tmp_path, monkeypatch):
     result = CliRunner().invoke(app, ["status"])
     assert result.exit_code == 0, result.output
     assert "degraded" not in result.output.lower()
+
+
+async def test_degradation_marker_is_isolated_from_topic_weights(tmp_path):
+    """The meta-table marker must be invisible to (and unclobberable via) the
+    topic-weights namespace that events and the learner write into."""
+    async with State.open(tmp_path / "s.db") as state:
+        brain = make_brain(state, tmp_path, judge=down_judge())
+        await brain.process(dict(URGENT))
+        assert await load_degraded(state)  # marker set in meta
+
+        # a hostile writer hammering the old key's namespace changes nothing
+        await state.set_topic_weights("__degraded__", {"active": False})
+        await state.set_topic_weights("degraded", {"active": False})
+        assert await load_degraded(state)  # still degraded
+
+        # and the marker never leaks back as scoring weights for any topic
+        assert await state.get_topic_weights("degraded") == {"active": False}
+        assert (await state.get_meta("degraded"))["active"] is True
