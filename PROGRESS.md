@@ -2,37 +2,37 @@
 
 | Step | Title | Status | Commit | Date |
 |------|-------|--------|--------|------|
-| 1 | Project scaffold | ✅ | 78d07e0 | 2026-07-04 |
-| 2 | Core schemas & storage | ✅ | ad0388e | 2026-07-04 |
-| 3 | Stage-1 hard rules + POLICY.md parser | ✅ | 3bf9136 | 2026-07-04 |
-| 4 | Scene engine + inference + policy table | ✅ | 256ded0 | 2026-07-04 |
-| 5 | Judge interface + fixture backend + routing | ✅ | 5c814c2 | 2026-07-04 |
-| 6 | Demo fixture + replay runner | ✅ | f1da593 | 2026-07-04 |
-| 7 | Demo routing regression (full-table) | ✅ | 064ad9e | 2026-07-04 |
-| 8 | Real LLM judge backends | ✅(mocked) | c17f42f | 2026-07-04 |
-| 9 | Stage-2 embedding classifier | ✅(mocked) | 3bb8384 | 2026-07-04 |
-| 10 | Delivery: terminal + desktop | ✅ | 5be3b40 | 2026-07-04 |
-| 11 | Delivery: Telegram + feedback buttons | ✅(mocked) | 87bb36a | 2026-07-04 |
-| 12 | Learner: signals, EMA, threshold tuning | ✅ | 29e716f | 2026-07-04 |
-| 13 | Shadow mode + Tact Report | ✅ | 0dccdbe | 2026-07-04 |
-| 14 | Dispatch executors | ✅ | 1ed3796 | 2026-07-04 |
-| 15 | Dispatch verification | ✅ | ea5cb7c | 2026-07-04 |
-| 16 | Arrive-with-a-plan | ✅ | c8c316f | 2026-07-04 |
-| 17 | Memory: curate + associate | ✅(mocked) | 418d883 | 2026-07-04 |
-| 18 | Ingest protocol: webhook + MCP | ✅ | ce69874 | 2026-07-04 |
-| 19 | Built-in sources: GitHub + RSS | ✅ | 366333c | 2026-07-04 |
-| 20 | Onboarding wizard + service install | ✅ | 44da161 | 2026-07-04 |
-| 21 | Digest polish + nightly distillation | ✅ | 6000119 | 2026-07-04 |
-| 22 | OpenClaw skill | ✅(mocked) — merged into 29 | 641a140 | 2026-07-04 |
-| 23 | Docs + README | ✅ | 8cafd6d | 2026-07-04 |
-| 24 | Release assets | ✅(mocked) | ab916fa | 2026-07-04 |
-| 25 | Golden dataset + eval harness | ✅ | 4606592 | 2026-07-05 |
-| 26 | Decision trace + cost accounting | ✅ | e84a417 | 2026-07-05 |
-| 27 | Prompt governance | ✅ | 18e09e9 | 2026-07-05 |
-| 28 | Failure injection + graceful degradation | ✅ | b9867a2 | 2026-07-05 |
-| 29 | Dual skill packaging (absorbs 22) | ✅(mocked) | 1d917d7 | 2026-07-05 |
-| 30 | Upstream integration examples | ✅ | 804084c | 2026-07-05 |
-| 31 | README v2 — quantified first screen | ✅ | dfb6346 | 2026-07-05 |
+| 1 | Project scaffold | ✅ | 169c5c8 | 2026-07-04 |
+| 2 | Core schemas & storage | ✅ | edf66e8 | 2026-07-04 |
+| 3 | Stage-1 hard rules + POLICY.md parser | ✅ | 27635ba | 2026-07-04 |
+| 4 | Scene engine + inference + policy table | ✅ | ebc6025 | 2026-07-04 |
+| 5 | Judge interface + fixture backend + routing | ✅ | 7e4b053 | 2026-07-04 |
+| 6 | Demo fixture + replay runner | ✅ | 8c28c73 | 2026-07-04 |
+| 7 | Demo routing regression (full-table) | ✅ | be22ac9 | 2026-07-04 |
+| 8 | Real LLM judge backends | ✅(mocked) | 0c96256 | 2026-07-04 |
+| 9 | Stage-2 embedding classifier | ✅(mocked) | e51fe72 | 2026-07-04 |
+| 10 | Delivery: terminal + desktop | ✅ | 96e90d6 | 2026-07-04 |
+| 11 | Delivery: Telegram + feedback buttons | ✅(mocked) | d2a9013 | 2026-07-04 |
+| 12 | Learner: signals, EMA, threshold tuning | ✅ | 822f574 | 2026-07-04 |
+| 13 | Shadow mode + Tact Report | ✅ | b270bd6 | 2026-07-04 |
+| 14 | Dispatch executors | ✅ | 71acdbf | 2026-07-04 |
+| 15 | Dispatch verification | ✅ | 9008c96 | 2026-07-04 |
+| 16 | Arrive-with-a-plan | ✅ | a445061 | 2026-07-04 |
+| 17 | Memory: curate + associate | ✅(mocked) | ce5151b | 2026-07-04 |
+| 18 | Ingest protocol: webhook + MCP | ✅ | a590ecd | 2026-07-04 |
+| 19 | Built-in sources: GitHub + RSS | ✅ | c3f8a2b | 2026-07-04 |
+| 20 | Onboarding wizard + service install | ✅ | b6f8508 | 2026-07-04 |
+| 21 | Digest polish + nightly distillation | ✅ | 77285a4 | 2026-07-04 |
+| 22 | OpenClaw skill | ✅(mocked) — merged into 29 | 907e77b | 2026-07-04 |
+| 23 | Docs + README | ✅ | 1069048 | 2026-07-04 |
+| 24 | Release assets | ✅(mocked) | ca02e21 | 2026-07-04 |
+| 25 | Golden dataset + eval harness | ✅ | d34868b | 2026-07-05 |
+| 26 | Decision trace + cost accounting | ✅ | 87f5d24 | 2026-07-05 |
+| 27 | Prompt governance | ✅ | 5b23360 | 2026-07-05 |
+| 28 | Failure injection + graceful degradation | ✅ | 07c8fc7 | 2026-07-05 |
+| 29 | Dual skill packaging (absorbs 22) | ✅(mocked) | b7114a7 | 2026-07-05 |
+| 30 | Upstream integration examples | ✅ | 8aa0501 | 2026-07-05 |
+| 31 | README v2 — quantified first screen | ✅ | 896dc49 | 2026-07-05 |
 
 ## Final summary (2026-07-04)
 
