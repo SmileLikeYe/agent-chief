@@ -91,3 +91,42 @@ def test_golden_jsonl_lines_are_valid_json():
     for line in lines[1:]:
         case = json.loads(line)
         assert case["type"] == "case"
+
+
+class ExplodingJudge:
+    """Transient failure on one case; healthy elsewhere (round-2 containment)."""
+
+    name = "exploding"
+
+    def __init__(self, blow_on: str):
+        self.blow_on = blow_on
+
+    async def judge(self, event, context):
+        if event.id == self.blow_on:
+            raise RuntimeError("transient 429")
+        from judge.base import JudgeResult
+
+        return JudgeResult(urgency=0.5, relevance=0.5, actionability=0.5,
+                           novelty=0.5, confidence=0.5, reason="fine")
+
+
+def test_one_flaky_case_never_aborts_an_eval_run():
+    # evt_gold_150 is a judged case (drop band scores in the fixture set)
+    report = run_capability(judge=ExplodingJudge("evt_gold_150"))
+    assert report.total == 200  # the run completed despite the explosion
+    blown = [r for r in report.results if r.event.id == "evt_gold_150"]
+    assert blown and blown[0].decision.degraded  # contained, conservative
+    assert blown[0].decision.route == "digest"
+
+
+def test_missing_fixture_judge_block_fails_loud():
+    # a broken fixture must abort (LookupError), never silently "verify"
+    import pytest
+
+    from demo.runner import replay
+    from eval.runner import load_golden
+    from judge.fixtures import FixtureJudge
+
+    fixture = load_golden()
+    with pytest.raises(LookupError):
+        replay(fixture, judge=FixtureJudge({}))  # judge knows no events at all
