@@ -4,6 +4,29 @@ All notable changes to Chief are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org) (0.x: minor bumps may break).
 
+## [0.3.1] — 2026-07-06
+
+Security & robustness hardening of the v0.3.0 product surface (from a
+dedicated multi-agent review pass).
+
+### Fixed
+- **Console XSS → token theft** closed: event/task ids (attacker-shaped) now
+  ride escaped `data-*` attributes with delegated listeners, never inline
+  handlers.
+- All API auth uses constant-time comparison (`hmac.compare_digest`); uvicorn
+  binds `127.0.0.1` explicitly on both servers.
+- **Composio webhook**: timestamp freshness (±5 min anti-replay), 1 MiB body
+  cap before buffering, non-ASCII signature headers no longer 500, non-dict
+  trigger data wrapped instead of crashing.
+- Console task-approve honors `task.executor` (was hardcoded `claude_code` — an
+  escalation over the query-only shell executor).
+- History search runs in SQL, so matches beyond the newest rows are found.
+- One `apply_feedback` path behind HTTP/MCP/Telegram/console: the natural
+  should/shouldn't-interrupt signals now learn identically everywhere (MCP and
+  Telegram previously only stored a raw row); unknown signals are rejected.
+- `chief connect` backs up and refuses to rewrite configs its serializer can't
+  round-trip, instead of corrupting them in place.
+
 ## [0.3.0] — 2026-07-06
 
 The "product surface" release (SPEC v3.2, Steps 32–36): Chief for people, not
@@ -91,6 +114,7 @@ Initial release: the full SPEC v3 implementation (Steps 1–24).
 - Fully offline deterministic demo (`uvx agent-chief demo`) with a
   full-table routing regression.
 
+[0.3.1]: https://github.com/SmileLikeYe/agent-chief/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SmileLikeYe/agent-chief/releases/tag/v0.1.0
