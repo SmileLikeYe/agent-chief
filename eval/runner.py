@@ -182,17 +182,33 @@ def render_compare_markdown(report: CompareReport, now: datetime | None = None) 
     return "\n".join(lines)
 
 
-def write_compare_report(report: CompareReport, out_dir: str | Path = REPORTS_DIR) -> Path:
+def _writable_dir(out_dir: str | Path) -> Path:
+    """eval/reports/ in a checkout; ~/.chief/eval-reports when installed read-only."""
+    import os
+
     out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if os.access(out_dir, os.W_OK):
+            return out_dir
+    except OSError:
+        pass
+    from core.config import chief_home
+
+    fallback = chief_home() / "eval-reports"
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
+def write_compare_report(report: CompareReport, out_dir: str | Path = REPORTS_DIR) -> Path:
+    out_dir = _writable_dir(out_dir)
     path = out_dir / f"compare-{report.version_a}-vs-{report.version_b}.md"
     path.write_text(render_compare_markdown(report), encoding="utf-8")
     return path
 
 
 def write_report(report: EvalReport, out_dir: str | Path = REPORTS_DIR) -> Path:
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = _writable_dir(out_dir)
     stamp = datetime.now(UTC).strftime("%Y%m%d")
     path = out_dir / f"{report.kind}-{report.backend}-{stamp}.md"
     path.write_text(render_markdown(report), encoding="utf-8")

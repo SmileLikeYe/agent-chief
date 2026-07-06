@@ -11,3 +11,12 @@ Log of steps that needed human-only resources; implemented against mocks/fixture
 - Step 22: no local OpenClaw install available. Integration is file-protocol based (tasks/ inbox, outbox/ pickup) and fully covered by tests against a faked OpenClaw home; the manual transcript in docs/openclaw-manual-test.md documents the faked run and what a live run would change.
 - Step 23: "clean machine" quickstart verified on this machine via isolated uvx (1.8s to demo end, well under 60s); a literally separate machine wasn't available tonight.
 - Step 24: publishing to (test) PyPI needs an account token only a human can provide. Everything short of upload is done and verified: `make release-check` runs the demo from the built wheel via isolated uvx (the exact `uvx agent-chief demo` code path), the GIF is reproducible via `make demo-gif`, and v0.1.0 is tagged. To finish: `uv publish --index testpypi` with a token, then re-verify.
+
+## Step 25/27 · Real-backend eval + prompt compare (v3.1)
+- Status: harness complete and CI-gated with the fixtures backend and offline
+  doubles; the CAPABILITY agreement number and prompt-compare diffs against a
+  REAL backend need an LLM API key (or a local Ollama pull).
+- Un-mock: `chief eval --backend deepseek` (or ollama/anthropic/openai) with
+  `[llm].api_key` set in ~/.chief/config.toml; for prompt changes,
+  `chief eval --compare v1 v2 --backend deepseek` and attach the report per
+  CONTRIBUTING.md.
