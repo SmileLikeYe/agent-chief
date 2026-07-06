@@ -9,6 +9,9 @@ lint:
 demo:
 	uv run chief demo
 
+readme-metrics:
+	uv run python scripts/readme_metrics.py --write
+
 demo-gif:
 	bash scripts/demo-gif.sh
 

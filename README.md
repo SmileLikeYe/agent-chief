@@ -19,6 +19,15 @@
 
 ---
 
+<!-- metrics:start -->
+**24 events in → 1 interruption** (96% intercepted: 14 blocked outright, the rest batched, dispatched, or remembered)
+· only **75% of events ever reach the LLM** — the noisiest 25% dies on hard rules in microseconds, for free
+· stable-prefix prompts: **64% of judge input tokens cache-hit** (system + context blocks)
+· projected judgment cost **$0.110 per 1,000 events** (DeepSeek list prices, cache-aware)
+
+*(every number regenerates from the deterministic demo replay: `make readme-metrics`)*
+<!-- metrics:end -->
+
 Chief sits between you and everything that wants your attention — agents,
 heartbeats, CI, RSS, watchers. Everything flows into it; it thinks for itself;
 then it does exactly one of three things:
@@ -74,6 +83,33 @@ similarity against a canned empty-report set, both required — a security scan
 that *mentions* "all clear" still gets through). The demo opens and closes with
 this, because it's the single most requested feature among heartbeat users.
 
+## 🔍 Explainable judgment, every single time
+
+No decision is a black box. Every Decision carries its **reason, five scored
+components, the rules it matched, and what it cost** — and `chief trace`
+replays the whole chain after the fact:
+
+```console
+$ chief trace evt_20260706_1040_ab12
+CI failed on main: test_auth_flow broken by PR #482  dev.ci · github-actions
+route dispatch at stage 3 in scene deep_work (confidence 0.85)
+score 0.87  urgency=0.90 relevance=0.90 actionability=0.85 novelty=0.80 confidence=0.90
+┌────────────┬───────┬──────────────────────┐
+│ stage      │    ms │ note                 │
+│ stage1     │   0.1 │ no hard rule fired   │
+│ associate  │   1.2 │ 0 memory hits        │
+│ judge      │ 812.4 │ backend deepseek     │
+│ route      │   0.3 │ routed dispatch      │
+└────────────┴───────┴──────────────────────┘
+tokens: 1104 in (704 cached) / 96 out · prompt v1 · cost $0.000301
+```
+
+Prompts are versioned templates (`judge/templates/v1/`), the version is
+stamped into every decision, and **no prompt change merges without an eval
+diff** on the 200-case golden set (`chief eval --compare v1 v2`). If the LLM
+backend dies, Chief degrades to rules-only conservative routing — never
+interrupts while blind — and heals itself when the backend returns.
+
 ## 🕶️ Shadow mode: trust is earned
 
 For its first 7 days (or 50 graded samples), Chief **never actually interrupts
@@ -125,8 +161,28 @@ curl -X POST http://localhost:8787/v1/events \
 ```
 
 Chief answers with a Decision — route, score, and a one-line reason. MCP agents
-use the `propose` tool instead. Full contract: **[docs/protocol.md](docs/protocol.md)**
+use the `propose` tool instead, and `chief lite` gives zero-daemon judgment for
+one-shot callers. Full contract: **[docs/protocol.md](docs/protocol.md)**
 · runnable samples: **[examples/](examples/)**.
+
+## 🧩 Skills: make your agents good citizens
+
+Drop-in skills teach agent hosts to route through Chief instead of pinging you:
+
+- **[skills/claude-code/](skills/claude-code/SKILL.md)** — Claude Code agents
+  propose via `chief lite` (no daemon needed) and obey the route.
+- **[skills/openclaw/](skills/openclaw/SKILL.md)** — OpenClaw agents propose
+  via MCP; interrupts ride OpenClaw's own channels back to you.
+
+Both encode the same iron rule: *the agent MUST NOT message the user directly.*
+
+## 🔗 Integrations: Chief as the judgment layer
+
+Noisy upstream bots in, one accountable judgment layer in the middle:
+**[examples/integrations/](examples/integrations/)** ships a runnable
+stock-analysis-bot feed (watch five "all good" reports die and three real
+findings survive) and a generic webhook template any agent can copy — both
+fully offline.
 
 ## 📁 Project layout
 

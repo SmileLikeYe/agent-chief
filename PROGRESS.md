@@ -31,8 +31,8 @@
 | 27 | Prompt governance | ✅ | 18e09e9 | 2026-07-05 |
 | 28 | Failure injection + graceful degradation | ✅ | b9867a2 | 2026-07-05 |
 | 29 | Dual skill packaging (absorbs 22) | ✅(mocked) | 1d917d7 | 2026-07-05 |
-| 30 | Upstream integration examples | ✅ | (this) | 2026-07-05 |
-| 31 | README v2 — quantified first screen | ⏳ | | |
+| 30 | Upstream integration examples | ✅ | 804084c | 2026-07-05 |
+| 31 | README v2 — quantified first screen | ✅ | (this) | 2026-07-05 |
 
 ## Final summary (2026-07-04)
 
