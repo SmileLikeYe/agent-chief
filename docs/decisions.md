@@ -63,3 +63,6 @@ One line per decision, per SPEC §7 rule 3.
 - 2026-07-05 · Prompt versions are directories (judge/templates/v1/…): copy-dir-to-bump, no in-file version headers; the active version is the PROMPT_VERSION constant and per-judge prompt_version overrides it for eval --compare.
 - 2026-07-05 · prompts.SYSTEM_PROMPT/RETRY_PROMPT stay as module constants rendered from the active version at import — call sites and the prompt-cache-stable message layout are unchanged.
 - 2026-07-05 · eval --compare with the fixtures backend still writes a report but prints a note that fixtures never read prompts — the mechanics stay testable offline, meaningful diffs need a real backend.
+- 2026-07-05 · Degradation is conservative in BOTH directions: while the judge is blind, events that pass stage-1 go to digest — never interrupt (annoyance risk) and never drop (loss risk).
+- 2026-07-05 · Degradation state lives under the "__degraded__" key in the topic_weights kv table (same pattern as __shadow__/__threshold_adjust__) so `chief status` sees it across processes; recovery clears it on the next successful judgment.
+- 2026-07-05 · The Brain wraps every judge call in asyncio.wait_for(judge_timeout=60s) and catches all exceptions — HTTPJudge's own timeout/retry stays, this is the outer safety net.

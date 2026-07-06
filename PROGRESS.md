@@ -28,8 +28,8 @@
 | 24 | Release assets | ✅(mocked) | ab916fa | 2026-07-04 |
 | 25 | Golden dataset + eval harness | ✅ | 4606592 | 2026-07-05 |
 | 26 | Decision trace + cost accounting | ✅ | e84a417 | 2026-07-05 |
-| 27 | Prompt governance | ✅ | (this) | 2026-07-05 |
-| 28 | Failure injection + graceful degradation | ⏳ | | |
+| 27 | Prompt governance | ✅ | 18e09e9 | 2026-07-05 |
+| 28 | Failure injection + graceful degradation | ✅ | (this) | 2026-07-05 |
 | 29 | Dual skill packaging (absorbs 22) | ⏳ | | |
 | 30 | Upstream integration examples | ⏳ | | |
 | 31 | README v2 — quantified first screen | ⏳ | | |

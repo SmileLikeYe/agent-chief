@@ -63,6 +63,7 @@ class Decision(BaseModel):
     stage: int
     dispatch_task_id: str | None = None
     trace: DecisionTrace | None = None
+    degraded: bool = False  # judge unavailable → rules-only conservative routing (Step 28)
 
 
 class Task(BaseModel):

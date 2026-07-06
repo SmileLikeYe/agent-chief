@@ -23,6 +23,30 @@ from judge.base import Judge, JudgeContext
 logger = logging.getLogger(__name__)
 
 DISPATCH_TIMEOUT_SECONDS = 600.0  # 10 minutes
+DEGRADED_KEY = "__degraded__"  # degradation marker in the topic_weights kv table (Step 28)
+
+
+async def load_degraded(state: State) -> dict | None:
+    """Current degradation info ({'since','last_error'}) or None when healthy."""
+    info = await state.get_topic_weights(DEGRADED_KEY)
+    return info if info and info.get("active") else None
+
+
+async def _set_degraded(state: State, error: Exception, now: datetime) -> None:
+    current = await load_degraded(state)
+    await state.set_topic_weights(
+        DEGRADED_KEY,
+        {
+            "active": True,
+            "since": current["since"] if current else now.isoformat(),
+            "last_error": f"{type(error).__name__}: {error}"[:200],
+        },
+    )
+
+
+async def _clear_degraded(state: State) -> None:
+    if await load_degraded(state):
+        await state.set_topic_weights(DEGRADED_KEY, {"active": False})
 
 
 class _StageClock:
@@ -60,6 +84,7 @@ class Brain:
         embedder=None,
         actor: Callable | None = None,
         now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+        judge_timeout: float = 60.0,
     ):
         self.state = state
         self.judge = judge
@@ -77,6 +102,7 @@ class Brain:
         self.embedder = embedder
         self.actor = actor  # async (Event, Decision) -> None; delivery/dispatch side
         self.now_fn = now_fn
+        self.judge_timeout = judge_timeout
 
     def _scene(self, now: datetime) -> SceneState:
         if self.scene_engine:
@@ -161,6 +187,7 @@ class Brain:
                     "reason": decision.reason,
                     "cost": decision.cost,
                     "prompt_version": decision.trace.prompt_version if decision.trace else None,
+                    "degraded": decision.degraded,
                 }
             )
         return decision
@@ -211,8 +238,28 @@ class Brain:
             scene=scene.scene,
             scene_confidence=scene.confidence,
         )
-        result = await self.judge.judge(event, context)
         backend = getattr(self.judge, "name", "unknown")
+        try:
+            result = await asyncio.wait_for(
+                self.judge.judge(event, context), self.judge_timeout
+            )
+        except Exception as exc:  # malformed output, timeout, backend down — never crash
+            logger.warning("judge %s unavailable (%s); degrading to rules-only", backend, exc)
+            await _set_degraded(self.state, exc, now)
+            clock.mark("judge", note=f"FAILED: {type(exc).__name__}")
+            return Decision(
+                event_id=event.id,
+                route="digest",  # conservative: never interrupt, never drop, while blind
+                scene=scene.scene,
+                scene_confidence=scene.confidence,
+                cost=0.0,
+                reason=f"judge unavailable ({type(exc).__name__}); "
+                "conservative rules-only routing to digest",
+                stage=3,
+                degraded=True,
+                trace=DecisionTrace(stages=clock.stages, backend=backend),
+            )
+        await _clear_degraded(self.state)
         clock.mark("judge", note=f"backend {backend}")
         weights = await self.state.get_topic_weights(event.topic)
         from core.learner import load_threshold_adjust

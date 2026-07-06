@@ -192,6 +192,7 @@ def status():
 
     from context.infer import SceneEngine
     from context.providers.clock import ClockProvider
+    from core.brain import load_degraded
     from core.config import db_path
     from core.learner import ShadowMode
     from core.state import State
@@ -201,12 +202,20 @@ def status():
             scene = SceneEngine([ClockProvider()]).current()
             counts = await state.route_counts()
             shadow = await ShadowMode(state).active(datetime.now(UTC))
-            return scene, counts, shadow
+            degraded = await load_degraded(state)
+            return scene, counts, shadow, degraded
 
-    scene, counts, shadow = asyncio.run(_status())
+    scene, counts, shadow, degraded = asyncio.run(_status())
     console = Console()
     console.print(f"scene: [bold]{scene.scene}[/bold] (confidence {scene.confidence:.2f})")
     console.print(f"shadow mode: {'on' if shadow else 'off'}")
+    if degraded:
+        console.print(
+            f"[red]judge: DEGRADED[/red] — rules-only conservative routing "
+            f"since {degraded['since']} (last error: {degraded['last_error']})"
+        )
+    else:
+        console.print("judge: healthy")
     console.print(
         "decisions: "
         + " · ".join(f"{route} {n}" for route, n in sorted(counts.items()))
