@@ -165,6 +165,35 @@ use the `propose` tool instead, and `chief lite` gives zero-daemon judgment for
 one-shot callers. Full contract: **[docs/protocol.md](docs/protocol.md)**
 · runnable samples: **[examples/](examples/)**.
 
+## 🖥️ The console — see it think, correct it in one click
+
+`chief ui` (or the resident `chief run`) serves a local console at
+`http://127.0.0.1:8787/ui` — single user, token-gated, no cloud:
+
+- **Today** — digest queue, interrupts, LLM share and spend at a glance
+- **History** — every decision with its reason, score, cost; searchable
+- **Rules** — edit `POLICY.md` in place; your edits win, live immediately
+- **Tasks** — approve/reject dispatched work (verification still applies)
+- **👍/👎 on every decision** — "worth my attention" / "don't bother me";
+  Chief's learner weighs these above every inferred signal
+
+<!-- console screenshot: docs/assets/console.png (make console-shot) -->
+
+## 🔌 Out-of-the-box sources
+
+```bash
+chief connect composio --secret whsec_…   # GitHub, Gmail, Slack, 500+ apps
+chief connect github                      # gh notifications poller
+chief connect rss --url https://hnrss.org/frontpage
+chief sources                             # see what's wired up
+```
+
+**[Composio](https://composio.dev)** is the flagship connector: point its
+trigger webhooks at `/v1/connectors/composio` (HMAC-verified) and every
+connected app flows through Chief's judgment. The connector registry leaves
+documented slots for zapier/n8n-style automations and MCP-push agents — one
+adapter module each.
+
 ## 🧩 Skills: make your agents good citizens
 
 Drop-in skills teach agent hosts to route through Chief instead of pinging you:

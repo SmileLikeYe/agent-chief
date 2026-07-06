@@ -74,3 +74,13 @@ Mocked pieces and their un-mock paths are in BLOCKERS.md (live-backend eval
 numbers and prompt-compare diffs need an LLM key; live skill-host halves need
 OpenClaw / a Claude Code session). New design decisions: 14 ADRs appended to
 docs/decisions.md.
+
+## v3.2 summary (2026-07-06)
+
+Steps 32-36 complete: the product surface. Natural feedback
+(should/shouldn't-interrupt, weighted above all inferred signals), a local
+web console (Today/History/Rules/Tasks/Sources + 👍/👎 everywhere), a
+connector framework with Composio as the flagship adapter (HMAC-verified
+trigger webhooks; slots documented for zapier/n8n/MCP-push), one-click
+`chief connect`, and v0.3.0 shipped through the automated release pipeline.
+296 tests. Live Composio round-trip needs an account + tunnel (BLOCKERS.md).

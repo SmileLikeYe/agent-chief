@@ -4,6 +4,29 @@ All notable changes to Chief are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org) (0.x: minor bumps may break).
 
+## [0.3.0] — 2026-07-06
+
+The "product surface" release (SPEC v3.2, Steps 32–36): Chief for people, not
+just for people who read specs.
+
+### Added
+- **Local web console** (`chief ui`, also served by `chief run`) at
+  `127.0.0.1:8787/ui`: Today / History / Rules / Tasks / Sources views,
+  POLICY.md editing that takes effect immediately, dispatch approve/reject
+  (verification still enforced), and 👍/👎 on every decision. Single user,
+  token-gated, one static HTML file — no cloud, no build toolchain.
+- **Natural feedback**: `should_interrupt` / `should_not_interrupt` as
+  first-class signals — stronger than every inferred signal — via the console,
+  `POST /v1/feedback`, the MCP `feedback` tool, and new Telegram buttons.
+- **Connector framework** with **Composio** as the flagship adapter:
+  HMAC-verified trigger webhooks (`/v1/connectors/composio`) translate
+  GitHub/Gmail/Slack/500+ app events into candidate events; documented slots
+  for zapier/n8n and MCP-push agents.
+- **One-click connect**: `chief connect composio|github|rss` edits config
+  surgically and prints exact next steps; `chief sources` shows status.
+- SPEC §13 revised by the owner: local-only console and connector ingest are
+  in scope; the hosted-UI and chat-delivery bans stand.
+
 ## [0.2.0] — 2026-07-05
 
 The "trust & distribution" release (SPEC v3.1, Steps 25–31) plus two
@@ -68,5 +91,6 @@ Initial release: the full SPEC v3 implementation (Steps 1–24).
 - Fully offline deterministic demo (`uvx agent-chief demo`) with a
   full-table routing regression.
 
+[0.3.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/SmileLikeYe/agent-chief/releases/tag/v0.1.0
