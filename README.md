@@ -6,6 +6,7 @@
 
 [![CI](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml/badge.svg)](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/SmileLikeYe/agent-chief?color=6366f1)](https://github.com/SmileLikeYe/agent-chief/releases)
+[![PyPI](https://img.shields.io/pypi/v/agent-chief)](https://pypi.org/project/agent-chief/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -61,6 +62,9 @@ then it does exactly one of three things:
 ```bash
 uvx agent-chief demo        # zero keys, zero config, fully offline
 ```
+
+Prefer a permanent install? `pip install agent-chief` (or `uv tool install
+agent-chief`) puts `chief` on your PATH.
 
 You'll watch a day of an engineer's life replay: 24 events in → 14 blocked ·
 6 batched · 3 handled (all verified) · **interrupted exactly once**.

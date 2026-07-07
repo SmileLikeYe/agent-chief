@@ -7,10 +7,12 @@
 - [x] GitHub releases published for v0.1.0 (retro) and v0.2.0 (latest)
 
 ## Publish (needs human credentials)
-- [ ] Test PyPI: `uv publish --index testpypi`, verify `uvx agent-chief demo`
-- [ ] Real PyPI: `uv publish` (name `agent-chief` confirmed free on 2026-07-04)
-- [ ] After publish: restore the PyPI badge in README.md / README.zh-CN.md
-      (removed pre-publish because it rendered "not found")
+- [x] Real PyPI: published `agent-chief` 0.3.1 (2026-07-07); verified
+      `uvx agent-chief demo` and `uvx agent-chief --version` from the live index
+- [x] Restored the PyPI badge in README.md / README.zh-CN.md
+- Going forward: publishing is automated via Trusted Publishing
+      (`.github/workflows/publish.yml`, see docs/PUBLISHING.md) — tag to release,
+      no token needed
 
 ---
 

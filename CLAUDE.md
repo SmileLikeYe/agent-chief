@@ -22,6 +22,7 @@ uv run chief connect composio --secret …   # + github / rss; chief sources
 uv run chief eval --learning      # preference-learning reward-loop eval
 ```
 
+Published on PyPI: `uvx agent-chief demo` / `pip install agent-chief`.
 Everything runs through `uv`. Python 3.12. No network, no API keys, and no
 real `~/.chief` are needed for the test suite — tests set `CHIEF_HOME` to a
 tmpdir and use the `fixtures` judge backend.

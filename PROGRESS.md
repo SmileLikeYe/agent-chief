@@ -25,7 +25,7 @@
 | 21 | Digest polish + nightly distillation | ✅ | 77285a4 | 2026-07-04 |
 | 22 | OpenClaw skill | ✅(mocked) — merged into 29 | 907e77b | 2026-07-04 |
 | 23 | Docs + README | ✅ | 1069048 | 2026-07-04 |
-| 24 | Release assets | ✅(mocked) | ca02e21 | 2026-07-04 |
+| 24 | Release assets | ✅ | ca02e21 | 2026-07-04 |
 | 25 | Golden dataset + eval harness | ✅ | d34868b | 2026-07-05 |
 | 26 | Decision trace + cost accounting | ✅ | 87f5d24 | 2026-07-05 |
 | 27 | Prompt governance | ✅ | 5b23360 | 2026-07-05 |
@@ -46,8 +46,7 @@ wheel.
 
 Steps marked ✅(mocked) were built against mocks/cassettes because they need
 human-only resources — live LLM API keys (8), torch disk space for real
-embeddings (9, 17), a Telegram bot token (11), a local OpenClaw install (22),
-and PyPI credentials (24). Details and the exact path to un-mock each one are
+embeddings (9, 17), a Telegram bot token (11), and a local OpenClaw install (22). PyPI is now published (v0.3.1, 2026-07-07). Details and the exact path to un-mock each one are
 in BLOCKERS.md. Design decisions taken where the spec was ambiguous are
 one-liners in docs/decisions.md (23 ADRs).
 

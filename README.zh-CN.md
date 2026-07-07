@@ -6,6 +6,7 @@
 
 [![CI](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml/badge.svg)](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/SmileLikeYe/agent-chief?color=6366f1)](https://github.com/SmileLikeYe/agent-chief/releases)
+[![PyPI](https://img.shields.io/pypi/v/agent-chief)](https://pypi.org/project/agent-chief/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -56,6 +57,9 @@ RSS、监控。一切先流经它;它自己思考;然后只做三件事之一:
 ```bash
 uvx agent-chief demo        # 零密钥、零配置、完全离线
 ```
+
+想常驻安装?`pip install agent-chief`(或 `uv tool install agent-chief`)会把
+`chief` 装到 PATH 上。
 
 你会看到一位工程师的一天被回放:24 个事件 → 14 个拦截 · 6 个归入摘要 ·
 3 个代办处理(全部核验)· **只打断你一次**。
