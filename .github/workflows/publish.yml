@@ -1,0 +1,39 @@
+name: Publish to PyPI
+# Trusted Publishing (OIDC) — no API token stored in the repo. One-time setup:
+#   PyPI → project → Publishing → add a GitHub publisher:
+#     owner=SmileLikeYe, repo=agent-chief, workflow=publish.yml, environment=pypi
+# Then: publishing happens automatically when a v* tag's GitHub Release is
+# published, or manually via the Actions tab (workflow_dispatch).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "testpypi or pypi"
+        default: "pypi"
+permissions:
+  contents: read
+  id-token: write  # required for Trusted Publishing
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --dev
+      - run: uv run ruff check .
+      - run: uv run pytest
+      - run: uv build
+      # sanity: the exact wheel must run the demo before it reaches an index
+      - run: uvx --from dist/*.whl chief demo --fast
+      - name: Publish
+        run: |
+          if [ "${{ github.event.inputs.repository }}" = "testpypi" ]; then
+            uv publish --publish-url https://test.pypi.org/legacy/
+          else
+            uv publish
+          fi

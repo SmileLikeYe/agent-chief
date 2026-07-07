@@ -131,6 +131,10 @@ since stage-1 rules already handle the obvious. Watch the learned per-topic
 lean in the console's **Learning** tab, or reproduce the curve with
 `chief eval --learning`.
 
+> 📝 The engineering story behind Chief — the funnel, per-model cost accounting,
+> and the falsifiable learning loop — is written up in
+> **[docs/blog](docs/blog/heartbeat-agents-are-training-you-to-ignore-them.md)**.
+
 ## 🕶️ Shadow mode: trust is earned
 
 For its first 7 days (or 50 graded samples), Chief **never actually interrupts

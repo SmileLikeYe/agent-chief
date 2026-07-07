@@ -1,4 +1,4 @@
-.PHONY: test lint demo demo-gif clean-dist build release-check readme-metrics
+.PHONY: test lint demo demo-gif showcase clean-dist build release-check readme-metrics
 
 test:
 	uv run pytest
@@ -14,6 +14,9 @@ readme-metrics:
 
 demo-gif:
 	bash scripts/demo-gif.sh
+
+showcase:
+	bash scripts/showcase.sh
 
 clean-dist:
 	rm -f dist/*
