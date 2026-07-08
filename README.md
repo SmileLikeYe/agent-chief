@@ -135,6 +135,23 @@ since stage-1 rules already handle the obvious. Watch the learned per-topic
 lean in the console's **Learning** tab, or reproduce the curve with
 `chief eval --learning`.
 
+**One user is an anecdote — so there's a cohort benchmark too.**
+`chief eval --cohort` runs the same loop over **100 simulated users** (a
+committed, seeded dataset: `eval/personas.jsonl`) with hidden preferences,
+different scenes, and different feedback-noise levels — then scores interrupt
+quality on a **held-out** event stream:
+
+```console
+$ chief eval --cohort
+cohort 64% of 100 users converge · held-out interrupt F1 0.10 → 0.81
+```
+
+64% reach ≥95% agreement (median 3 rounds); the other 36% are *exactly* the
+users with a wanted-but-too-quiet topic that bounded weights provably can't lift
+over their scene's bar — `converged ∪ ceiling-capped == everyone`, and a test
+pins it. The write-up, including three worked users and the `s ≥ √(T/5)` ceiling,
+is in **[docs/eval/cohort-benchmark.md](docs/eval/cohort-benchmark.md)**.
+
 > 📝 The engineering story behind Chief — the funnel, per-model cost accounting,
 > and the falsifiable learning loop — is written up in
 > **[docs/blog](docs/blog/heartbeat-agents-are-training-you-to-ignore-them.md)**.

@@ -4,6 +4,19 @@ All notable changes to Chief are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [SemVer](https://semver.org) (0.x: minor bumps may break).
 
+## [Unreleased]
+
+### Added
+- **Cohort preference-learning benchmark** (`chief eval --cohort`): the reward
+  loop, run over a committed 100-user dataset (`eval/personas.jsonl`, seeded and
+  reproducible) instead of one simulated user. Train/eval split — corrected by
+  ±1 feedback during training, scored on a **held-out** event stream — reporting
+  a distribution: **64% of users converge** (median 3 rounds), held-out interrupt
+  **F1 0.10 → 0.81**, a noise-tier breakdown, and the provable ceiling
+  (`converged ∪ ceiling-capped == everyone`). Writes `eval/reports/cohort.md`;
+  write-up in `docs/eval/cohort-benchmark.md`. 11 new tests pin the numbers, the
+  dataset-vs-generator reproducibility, and the ceiling invariant (326 total).
+
 ## [0.3.1] — 2026-07-06
 
 Security & robustness hardening of the v0.3.0 product surface (from a

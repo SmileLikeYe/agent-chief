@@ -20,6 +20,7 @@ uv run chief lite '<event json>'  # zero-daemon judgment (skills use this)
 uv run chief ui                   # local web console at 127.0.0.1:8787/ui
 uv run chief connect composio --secret …   # + github / rss; chief sources
 uv run chief eval --learning      # preference-learning reward-loop eval
+uv run chief eval --cohort        # 100-user cohort benchmark (eval/personas.jsonl)
 ```
 
 Published on PyPI: `uvx agent-chief demo` / `pip install agent-chief`.

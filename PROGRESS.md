@@ -83,3 +83,17 @@ connector framework with Composio as the flagship adapter (HMAC-verified
 trigger webhooks; slots documented for zapier/n8n/MCP-push), one-click
 `chief connect`, and v0.3.0 shipped through the automated release pipeline.
 296 tests. Live Composio round-trip needs an account + tunnel (BLOCKERS.md).
+
+## Step 38 — cohort preference-learning benchmark (2026-07-08)
+
+Generalized the single-user reward-loop eval (Step 37) to a population. A
+committed, seeded 100-user dataset (`eval/personas.jsonl`, reproducible from
+`eval/generate_personas.py`) drives a train/eval-split benchmark
+(`eval/cohort.py`, `chief eval --cohort`): ±1 feedback trains per persona,
+interrupt precision/recall/F1 is scored on a disjoint held-out stream. The
+report is a distribution — 64% of users converge (median 3 rounds), held-out
+interrupt F1 0.10 → 0.81, a feedback-noise-tier breakdown — and it states the
+provable ceiling (`s ≥ √(T/5)`; a user converges iff every wanted topic is
+reachable, so `converged ∪ ceiling-capped == everyone`). 11 new tests pin the
+numbers, dataset-vs-generator reproducibility, and the ceiling invariant.
+326 tests. Write-up: `docs/eval/cohort-benchmark.md`.

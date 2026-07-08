@@ -47,6 +47,9 @@ def eval_cmd(
     learning: bool = typer.Option(
         False, "--learning", help="Run the preference-learning (reward-loop) eval."
     ),
+    cohort: bool = typer.Option(
+        False, "--cohort", help="Run the 100-user cohort preference-learning benchmark."
+    ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
     from rich.console import Console
@@ -62,6 +65,27 @@ def eval_cmd(
     )
 
     console = Console()
+
+    if cohort:
+        import asyncio
+
+        from eval.cohort import render_markdown as render_cohort
+        from eval.cohort import run_cohort
+
+        if compare[0] or backend != "fixtures":
+            console.print(
+                "[yellow]note[/yellow]: --cohort ignores --compare/--backend "
+                "(the reward loop uses the built-in scorer, not an LLM judge)"
+            )
+        report = asyncio.run(run_cohort())
+        path = _writable_dir(out or REPORTS_DIR) / "cohort.md"
+        path.write_text(render_cohort(report), encoding="utf-8")
+        console.print(
+            f"[green]cohort[/green] {report.converged_frac:.0%} of {report.n} users "
+            f"converge · held-out interrupt F1 {report.f1_before:.2f} → "
+            f"{report.f1_after:.2f} → {path}"
+        )
+        return
 
     if learning:
         import asyncio
