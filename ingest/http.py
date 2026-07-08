@@ -108,19 +108,22 @@ def create_app(
 
     @app.get("/api/overview")
     async def overview(_: None = Depends(check_auth)) -> dict:
-        from datetime import UTC, datetime, timedelta
+        from datetime import timedelta
 
         from core.brain import load_degraded
         from core.learner import ShadowMode
 
-        since = datetime.now(UTC) - timedelta(hours=24)
+        # window off the brain's clock, not wall-clock, so the 24h view is
+        # consistent with the timestamps the pipeline stamped on decisions
+        now = brain.now_fn()
+        since = now - timedelta(hours=24)
         stats = await brain.state.decision_stats(since=since)
         stats["llm_share"] = stats["judged"] / stats["total"] if stats["total"] else 0.0
         return {
             "counts": await brain.state.route_counts(since=since),
             "stats": stats,
             "degraded": await load_degraded(brain.state),
-            "shadow": await ShadowMode(brain.state).active(datetime.now(UTC)),
+            "shadow": await ShadowMode(brain.state).active(now),
         }
 
     @app.get("/api/decisions")
@@ -133,9 +136,9 @@ def create_app(
 
     @app.get("/api/digest")
     async def digest_queue(_: None = Depends(check_auth)):
-        from datetime import UTC, datetime, timedelta
+        from datetime import timedelta
 
-        rows = await brain.state.digest_pool(datetime.now(UTC) - timedelta(hours=24))
+        rows = await brain.state.digest_pool(brain.now_fn() - timedelta(hours=24))
         return [
             {"event": e.model_dump(mode="json"), "decision": d.model_dump(mode="json")}
             for e, d in rows
