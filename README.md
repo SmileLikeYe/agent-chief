@@ -13,6 +13,7 @@
 [![Local First](https://img.shields.io/badge/local--first-no%20cloud%2C%20no%20telemetry-8b5cf6)](#privacy)
 
 [Quickstart](#-60-second-quickstart) · [How it works](#-how-it-decides) ·
+[Evaluated, not asserted](#-evaluated-not-asserted) ·
 [Connect your agent](#-connect-your-agent-3-lines) · [Docs](docs/) ·
 [简体中文](README.zh-CN.md)
 
@@ -56,6 +57,7 @@ then it does exactly one of three things:
 | ✅ **Verified dispatch** | Agents report "done"; Chief checks. Acceptance command or LLM second opinion — fails closed. |
 | 🔌 **Protocol, not pipes** | One `POST /v1/events` (or MCP `propose`) connects anything in minutes. |
 | 🔒 **Local-first** | One SQLite file + markdown under `~/.chief`. No cloud, no telemetry, no web UI. |
+| 🔬 **Evaluated, not asserted** | 326 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
 
 ## ⚡ 60-second quickstart
 
@@ -136,25 +138,63 @@ lean in the console's **Learning** tab, or reproduce the curve with
 `chief eval --learning`.
 
 **One user is an anecdote — so there's a cohort benchmark too.**
-`chief eval --cohort` runs the same loop over **100 simulated users** (a
-committed, seeded dataset: `eval/personas.jsonl`) with hidden preferences,
-different scenes, and different feedback-noise levels — then scores interrupt
-quality on a **held-out** event stream:
+`chief eval --cohort` runs the same loop over a committed, seeded **100-user
+dataset** ([`eval/personas.jsonl`](eval/personas.jsonl)) — each with hidden
+preferences, a different scene, and a different feedback-noise level. It's a
+proper **train/eval split**: ±1 feedback trains each user, then interrupt
+quality is scored on a **held-out** event stream they never trained on.
 
 ```console
 $ chief eval --cohort
 cohort 64% of 100 users converge · held-out interrupt F1 0.10 → 0.81
+
+rounds to ≥95% (of the 64)      held-out interrupt F1 (mean)
+  1–2 |████████████████| 24      before  0.10 |██              |
+  3–4 |███████████████ | 23      after   0.81 |████████████████|
+  5+  |███████████     | 17
 ```
 
-64% reach ≥95% agreement (median 3 rounds); the other 36% are *exactly* the
-users with a wanted-but-too-quiet topic that bounded weights provably can't lift
-over their scene's bar — `converged ∪ ceiling-capped == everyone`, and a test
-pins it. The write-up, including three worked users and the `s ≥ √(T/5)` ceiling,
-is in **[docs/eval/cohort-benchmark.md](docs/eval/cohort-benchmark.md)**.
+The other 36% who *don't* converge aren't a mystery the benchmark hides — they
+are **provably** the users with a wanted-but-too-quiet topic that bounded
+weights can't lift over their scene's bar (a topic of strength `s` peaks at
+`5s²`, so it clears threshold `T` only when `s ≥ √(T/5)`). A user converges
+**iff** every wanted topic is reachable, so `converged ∪ ceiling-capped ==
+everyone` — an invariant a test enforces. Full derivation and three worked
+users: **[docs/eval/cohort-benchmark.md](docs/eval/cohort-benchmark.md)**.
+
+> **Why this matters:** most "it learns your preferences" claims are an
+> unfalsifiable demo. This one ships the population distribution *and* the exact
+> boundary where feedback stops working — being able to name where your system
+> fails is more convincing than claiming it never does.
 
 > 📝 The engineering story behind Chief — the funnel, per-model cost accounting,
 > and the falsifiable learning loop — is written up in
 > **[docs/blog](docs/blog/heartbeat-agents-are-training-you-to-ignore-them.md)**.
+
+## 🔬 Evaluated, not asserted
+
+Every number on this page is backed by a **deterministic, offline** eval you can
+run yourself — no keys, no network. Claims that can't be measured don't ship.
+
+| Eval | What it proves | Run it |
+|---|---|---|
+| **Routing regression** | the demo's 24 events route *exactly* as pinned — CI-gated at 100%, forever | `chief eval` |
+| **Capability** | agreement on a **200-case golden dataset** whose labels are verified against the real pipeline | `chief eval` |
+| **Reward loop** | ±1 feedback trains the policy — one user, 0% → 100% in 2 rounds | `chief eval --learning` |
+| **Cohort benchmark** | it generalizes to **100 users**: 64% converge, held-out interrupt **F1 0.10 → 0.81**, with a *provable* ceiling | `chief eval --cohort` |
+| **Cost accounting** | per-model, cache-aware USD on every decision — this caught a **17× mispricing** bug | `chief trace <id>` |
+| **Graceful degradation** | judge offline → rules-only conservative routing, never interrupts blind, auto-heals | chaos-injection tests |
+| **Prompt governance** | no prompt change merges without an eval diff on the golden set | `chief eval --compare v1 v2` |
+
+**326 tests, fully offline.** The demo routing table is a full-table
+regression — every event's route is pinned, so a behavior change can never slip
+through silently.
+
+```bash
+make test lint      # pytest + ruff, no keys needed
+make demo           # the offline day-of-engineer replay
+make release-check  # build the wheel, run the demo from it via uvx
+```
 
 ## 🕶️ Shadow mode: trust is earned
 
@@ -270,18 +310,8 @@ dispatch/   executors (claude-code, whitelisted shell) + verification
 delivery/   terminal · desktop · telegram (feedback buttons)
 memory/     curate, associate, expire → archive
 demo/       the offline day-of-engineer replay fixture + runner
+eval/       golden 200-case dataset, reward-loop + 100-user cohort benchmarks
 skills/     OpenClaw integration (propose-and-obey)
-```
-
-## 🧪 Quality
-
-218 tests run fully offline — no keys, no network. The demo's routing table is
-a full-table regression: all 24 events' routes are pinned in CI forever.
-
-```bash
-make test lint      # pytest + ruff
-make demo           # the offline replay
-make release-check  # build the wheel, run the demo from it via uvx
 ```
 
 ## 🗺 Roadmap & contributing
