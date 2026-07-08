@@ -1,0 +1,14 @@
+# Adds the "Sponsor" button to the repo header.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+#
+# GitHub Sponsors — shows the button; to actually RECEIVE money you must first
+# enrol your account at https://github.com/sponsors (one-time web signup + Stripe).
+github: [SmileLikeYe]
+
+# Other platforms — uncomment and fill in when you set them up:
+# ko_fi: your_kofi_username
+# open_collective: agent-chief
+# patreon: your_patreon
+# liberapay: your_liberapay
+# buy_me_a_coffee: your_bmac
+# custom: ['https://smileflow.cn/']
