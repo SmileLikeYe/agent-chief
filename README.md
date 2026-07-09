@@ -2,6 +2,12 @@
 
 <img src="docs/assets/logo.svg" alt="Chief" width="640"/>
 
+<video src="docs/assets/chief-product-trailer.mp4" controls width="720">
+  <a href="docs/assets/chief-product-trailer.mp4">Watch the Chief product trailer</a>
+</video>
+
+<p><a href="docs/assets/chief-product-trailer.mp4">Watch the 10-second product trailer</a></p>
+
 **Your agents don't need more power. They need a chief of staff.**
 
 [![CI](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml/badge.svg)](https://github.com/SmileLikeYe/agent-chief/actions/workflows/ci.yml)
