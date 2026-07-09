@@ -1,25 +1,25 @@
-<svg width="720" height="180" viewBox="0 0 720 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="960" height="240" viewBox="0 0 960 240" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="720" y2="180" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="960" y2="240" gradientUnits="userSpaceOnUse">
       <stop stop-color="#0f1117"/>
       <stop offset="1" stop-color="#1a1f2e"/>
     </linearGradient>
-    <linearGradient id="accent" x1="120" y1="40" x2="120" y2="140" gradientUnits="userSpaceOnUse">
+    <linearGradient id="accent" x1="190" y1="85" x2="190" y2="210" gradientUnits="userSpaceOnUse">
       <stop stop-color="#7dd3fc"/>
       <stop offset="1" stop-color="#6366f1"/>
     </linearGradient>
   </defs>
-  <rect width="720" height="180" rx="16" fill="url(#bg)"/>
-  <!-- funnel: many streams in, one decision out -->
-  <g stroke="url(#accent)" stroke-width="5" stroke-linecap="round">
-    <path d="M78 46 L110 78"/>
-    <path d="M120 40 L120 74"/>
-    <path d="M162 46 L130 78"/>
-    <path d="M96 60 L114 78"/>
-    <path d="M144 60 L126 78"/>
+  <rect width="960" height="240" rx="20" fill="url(#bg)"/>
+  <g transform="translate(135 45) scale(1.45)">
+    <g stroke="url(#accent)" stroke-width="5" stroke-linecap="round">
+      <path d="M78 46 L110 78"/>
+      <path d="M120 40 L120 74"/>
+      <path d="M162 46 L130 78"/>
+      <path d="M96 60 L114 78"/>
+      <path d="M144 60 L126 78"/>
+    </g>
+    <path d="M92 82 H148 L128 112 V136 L112 128 V112 Z" fill="url(#accent)" opacity="0.9"/>
+    <circle cx="120" cy="146" r="5" fill="#7dd3fc"/>
   </g>
-  <path d="M92 82 H148 L128 112 V136 L112 128 V112 Z" fill="url(#accent)" opacity="0.9"/>
-  <circle cx="120" cy="146" r="5" fill="#7dd3fc"/>
-  <text x="200" y="98" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#f4f4f5">Chief</text>
-  <text x="202" y="132" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" fill="#a1a1aa">The chief of staff for your agents — everything in, one decision out.</text>
+  <text x="430" y="155" font-family="Georgia, 'Times New Roman', serif" font-size="92" font-weight="bold" fill="#f4f4f5">Chief</text>
 </svg>

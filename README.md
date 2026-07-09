@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="Chief" width="640"/>
+<img src="docs/assets/logo.png" alt="Chief" width="640"/>
 
-<video src="docs/assets/chief-product-trailer.mp4" controls width="720">
-  <a href="docs/assets/chief-product-trailer.mp4">Watch the Chief product trailer</a>
-</video>
+</div>
 
-<p><a href="docs/assets/chief-product-trailer.mp4">Watch the 10-second product trailer</a></p>
+https://github.com/user-attachments/assets/1177a237-3f0f-4512-baef-dcc9f2c75c6d
+
+<div align="center">
 
 **Your agents don't need more power. They need a chief of staff.**
 
