@@ -141,8 +141,11 @@ def test_wizard_interactive_all_enters(tmp_path):
     assert cfg["digest"]["times"] == ["08:00", "18:30"]
 
 
-def test_install_service_emits_unit(tmp_path, monkeypatch):
+def test_install_service_emits_systemd_unit(tmp_path, monkeypatch):
+    import platform
+
     monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
     result = runner.invoke(app, ["install-service"])
     assert result.exit_code == 0
     unit = tmp_path / "chief.service"
@@ -150,6 +153,23 @@ def test_install_service_emits_unit(tmp_path, monkeypatch):
     text = unit.read_text()
     assert "chief run" in text or "cli.main run" in text
     assert "systemctl" in result.output  # instructions printed
+
+
+def test_install_service_emits_launchd_plist(tmp_path, monkeypatch):
+    import platform
+
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    monkeypatch.setattr(platform, "system", lambda: "Darwin")
+
+    result = runner.invoke(app, ["install-service"])
+
+    assert result.exit_code == 0
+    plist = tmp_path / "com.chief.agent.plist"
+    assert plist.exists()
+    text = plist.read_text(encoding="utf-8")
+    assert "<key>ProgramArguments</key>" in text
+    assert "chief" in text and "run" in text
+    assert "launchctl" in result.output
 
 
 def test_chief_run_smoke_once(tmp_path, monkeypatch):

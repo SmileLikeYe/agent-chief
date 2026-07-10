@@ -7,6 +7,7 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 PROTOCOL = (ROOT / "docs" / "protocol.md").read_text(encoding="utf-8")
 SEND_EVENT = (ROOT / "examples" / "send-event.sh").read_text(encoding="utf-8")
 PYTHON_CLIENT = (ROOT / "examples" / "python_client.py").read_text(encoding="utf-8")
+CI_WORKFLOW = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
 
 def test_readme_has_hook_and_quickstart():
@@ -25,6 +26,12 @@ def test_examples_do_not_fall_back_to_public_default_token():
     assert "change-me" not in SEND_EVENT
     assert "change-me" not in PYTHON_CLIENT
     assert "chief token" in SEND_EVENT
+
+
+def test_ci_runs_on_linux_and_macos():
+    assert "ubuntu-latest" in CI_WORKFLOW
+    assert "macos-latest" in CI_WORKFLOW
+    assert "matrix.os" in CI_WORKFLOW
 
 
 def test_readme_kill_all_clear_section():
