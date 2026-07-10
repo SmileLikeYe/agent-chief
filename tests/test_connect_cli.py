@@ -1,5 +1,6 @@
 """Step 35 acceptance (SPEC v3.2): chief connect / chief sources."""
 
+import stat
 import tomllib
 
 from typer.testing import CliRunner
@@ -102,3 +103,5 @@ def test_connect_backs_up_before_rewrite(tmp_path, monkeypatch):
     runner.invoke(app, ["connect", "github"])
     assert (tmp_path / "config.toml.bak").exists()
     assert 'backend = "ollama"' in (tmp_path / "config.toml.bak").read_text(encoding="utf-8")
+    assert stat.S_IMODE((tmp_path / "config.toml").stat().st_mode) == 0o600
+    assert stat.S_IMODE((tmp_path / "config.toml.bak").stat().st_mode) == 0o600

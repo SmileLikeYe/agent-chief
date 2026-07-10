@@ -1,13 +1,24 @@
 """Implements SPEC §4.8: onboarding wizard — every question skippable with
 sensible defaults; generates ~/.chief/config.toml + POLICY.md + USER.md."""
 
+import copy
+import secrets
 import shutil
 import subprocess
 from pathlib import Path
 
 from rich.console import Console
 
-from core.config import chief_home, config_path, policy_path, user_md_path
+from core.config import (
+    UnsupportedConfig,
+    config_path,
+    ensure_private_home,
+    load_config,
+    policy_path,
+    serialize_config,
+    user_md_path,
+    write_private_text,
+)
 
 console = Console()
 
@@ -24,6 +35,10 @@ DEFAULTS = {
     "github": False,
     "rss_urls": [],
     "workdir": "~/work",
+    "dispatch_enabled": True,
+    "foreground_app": False,
+    "webhook_token": "",
+    "webhook_port": 8787,
 }
 
 
@@ -48,7 +63,7 @@ def _gh_authed() -> bool:
 def _ask(answers: dict) -> dict:
     import questionary
 
-    backend_default = "ollama" if _ollama_available() else "deepseek"
+    backend_default = answers["backend"]
     backend = questionary.select(
         "LLM backend (Enter for default)",
         choices=["ollama", "deepseek", "anthropic", "openai", "fixtures"],
@@ -58,74 +73,118 @@ def _ask(answers: dict) -> dict:
         return answers  # non-interactive session: keep defaults
     answers["backend"] = backend
     if backend not in ("ollama", "fixtures"):
-        answers["api_key"] = questionary.password(f"{backend} API key (blank to skip)").ask() or ""
+        api_key = questionary.password(
+            f"{backend} API key (blank to keep existing)"
+        ).ask()
+        if api_key:
+            answers["api_key"] = api_key
 
     channel = questionary.select(
-        "Delivery channel", choices=["desktop", "telegram", "terminal"], default="desktop"
+        "Delivery channel",
+        choices=["desktop", "telegram", "terminal"],
+        default=answers["channels"][0],
     ).ask()
     answers["channels"] = [channel or "desktop"]
     if channel == "telegram":
         console.print("30s guide: https://core.telegram.org/bots#how-do-i-create-a-bot")
-        answers["telegram_token"] = questionary.password("Bot token (blank to skip)").ask() or ""
-        answers["chat_id"] = questionary.text("Chat id (blank to skip)").ask() or ""
+        telegram_token = questionary.password("Bot token (blank to keep existing)").ask()
+        chat_id = questionary.text("Chat id (blank to keep existing)").ask()
+        if telegram_token:
+            answers["telegram_token"] = telegram_token
+        if chat_id:
+            answers["chat_id"] = chat_id
 
-    times = questionary.text("Digest times", default="08:00, 18:30").ask() or "08:00, 18:30"
+    current_times = ", ".join(answers["digest_times"])
+    times = questionary.text("Digest times", default=current_times).ask() or current_times
     answers["digest_times"] = [t.strip() for t in times.split(",") if t.strip()]
 
     answers["quiet_hours"] = (
-        questionary.text("Quiet hours", default="23:00-08:00").ask() or "23:00-08:00"
+        questionary.text("Quiet hours", default=answers["quiet_hours"]).ask()
+        or answers["quiet_hours"]
     )
     whitelist = (
-        questionary.text("Night whitelist topics", default="family, production_incident").ask()
-        or "family, production_incident"
+        questionary.text(
+            "Night whitelist topics", default=", ".join(answers["whitelist"])
+        ).ask()
+        or ", ".join(answers["whitelist"])
     )
     answers["whitelist"] = [w.strip() for w in whitelist.split(",") if w.strip()]
 
     if _gh_authed():
         answers["github"] = bool(
-            questionary.confirm("gh is authenticated — watch GitHub notifications?", default=True)
+            questionary.confirm(
+                "gh is authenticated — watch GitHub notifications?", default=answers["github"]
+            )
             .ask()
         )
-    rss = questionary.text("RSS url to watch (blank to skip)", default="").ask() or ""
-    answers["rss_urls"] = [rss.strip()] if rss.strip() else []
+    rss_default = ", ".join(answers["rss_urls"])
+    rss = questionary.text("RSS URLs (comma-separated, blank to skip)", default=rss_default).ask()
+    answers["rss_urls"] = [url.strip() for url in (rss or "").split(",") if url.strip()]
     return answers
 
 
-def _render_config(a: dict) -> str:
-    def toml_list(items: list[str]) -> str:
-        return "[" + ", ".join(f'"{i}"' for i in items) + "]"
+def _answers_from_config(config: dict) -> dict:
+    answers = copy.deepcopy(DEFAULTS)
+    llm = config.get("llm", {})
+    delivery = config.get("delivery", {})
+    digest = config.get("digest", {})
+    quiet = config.get("quiet", {})
+    dispatch = config.get("dispatch", {})
+    context = config.get("context", {})
+    ingest = config.get("ingest", {})
+    answers.update(
+        backend=llm.get("backend", answers["backend"]),
+        model=llm.get("model", answers["model"]),
+        api_key=llm.get("api_key", answers["api_key"]),
+        channels=delivery.get("channels", answers["channels"]),
+        telegram_token=delivery.get("telegram_token", answers["telegram_token"]),
+        chat_id=delivery.get("chat_id", answers["chat_id"]),
+        digest_times=digest.get("times", answers["digest_times"]),
+        quiet_hours=quiet.get("hours", answers["quiet_hours"]),
+        whitelist=quiet.get("whitelist", answers["whitelist"]),
+        workdir=dispatch.get("claude_code_workdir", answers["workdir"]),
+        dispatch_enabled=dispatch.get("enabled", answers["dispatch_enabled"]),
+        foreground_app=context.get("foreground_app", answers["foreground_app"]),
+        github=ingest.get("github", answers["github"]),
+        rss_urls=ingest.get("rss_urls", answers["rss_urls"]),
+        webhook_token=ingest.get("webhook_token", answers["webhook_token"]),
+        webhook_port=ingest.get("webhook_port", answers["webhook_port"]),
+    )
+    return answers
 
-    return f"""# chief configuration (SPEC §10)
-[llm]
-backend = "{a["backend"]}"
-model = "{a["model"]}"
-api_key = "{a["api_key"]}"
 
-[delivery]
-channels = {toml_list(a["channels"])}
-telegram_token = "{a["telegram_token"]}"
-chat_id = "{a["chat_id"]}"
+def _managed_config(a: dict) -> dict:
+    return {
+        "llm": {"backend": a["backend"], "model": a["model"], "api_key": a["api_key"]},
+        "delivery": {
+            "channels": a["channels"],
+            "telegram_token": a["telegram_token"],
+            "chat_id": a["chat_id"],
+        },
+        "digest": {"times": a["digest_times"]},
+        "quiet": {"hours": a["quiet_hours"], "whitelist": a["whitelist"]},
+        "dispatch": {
+            "claude_code_workdir": a["workdir"],
+            "enabled": a["dispatch_enabled"],
+        },
+        "context": {"foreground_app": a["foreground_app"]},
+        "ingest": {
+            "github": a["github"],
+            "rss_urls": a["rss_urls"],
+            "webhook_token": a["webhook_token"],
+            "webhook_port": a["webhook_port"],
+        },
+    }
 
-[digest]
-times = {toml_list(a["digest_times"])}
 
-[quiet]
-hours = "{a["quiet_hours"]}"
-whitelist = {toml_list(a["whitelist"])}
-
-[dispatch]
-claude_code_workdir = "{a["workdir"]}"
-enabled = true
-
-[context]
-foreground_app = false  # privacy-sensitive, default OFF
-
-[ingest]
-github = {str(a["github"]).lower()}
-rss_urls = {toml_list(a["rss_urls"])}
-webhook_token = "change-me"
-webhook_port = 8787
-"""
+def _merge_config(existing: dict, managed: dict) -> dict:
+    merged = copy.deepcopy(existing)
+    for section, values in managed.items():
+        current = merged.setdefault(section, {})
+        if not isinstance(current, dict):
+            current = merged[section] = {}
+        current.update(values)
+    return merged
 
 
 def _template(name: str) -> str:
@@ -133,20 +192,32 @@ def _template(name: str) -> str:
 
 
 def run_wizard(defaults_only: bool = False) -> Path:
-    home = chief_home()
-    home.mkdir(parents=True, exist_ok=True)
+    ensure_private_home()
+    existing = load_config()
 
-    answers = dict(DEFAULTS)
-    if _ollama_available():
+    answers = _answers_from_config(existing)
+    if not existing and _ollama_available():
         answers["backend"] = "ollama"
+    elif not existing and not defaults_only:
+        answers["backend"] = "deepseek"
     if not defaults_only:
         answers = _ask(answers)
+    if answers["webhook_token"] in ("", "change-me"):
+        answers["webhook_token"] = secrets.token_urlsafe(32)
 
-    config_path().write_text(_render_config(answers), encoding="utf-8")
+    merged = _merge_config(existing, _managed_config(answers))
+    try:
+        rendered = serialize_config(merged)
+    except UnsupportedConfig as exc:
+        raise SystemExit(
+            f"chief init can't safely rewrite {config_path()} ({exc}). "
+            "Keep the existing config and edit it by hand."
+        ) from exc
+    write_private_text(config_path(), rendered)
     if not policy_path().exists():  # never clobber user edits
-        policy_path().write_text(_template("POLICY.template.md"), encoding="utf-8")
+        write_private_text(policy_path(), _template("POLICY.template.md"))
     if not user_md_path().exists():
-        user_md_path().write_text(_template("USER.template.md"), encoding="utf-8")
+        write_private_text(user_md_path(), _template("USER.template.md"))
 
     console.print(f"✅ wrote {config_path()}")
     console.print("Next: [bold]chief run[/bold] (or [bold]chief install-service[/bold])")
@@ -158,8 +229,7 @@ def install_service() -> Path:
     import platform
     import sys
 
-    home = chief_home()
-    home.mkdir(parents=True, exist_ok=True)
+    home = ensure_private_home()
     chief_bin = shutil.which("chief")
     exec_cmd = chief_bin + " run" if chief_bin else f"{sys.executable} -m cli.main run"
 

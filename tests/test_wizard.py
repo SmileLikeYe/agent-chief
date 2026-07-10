@@ -1,6 +1,7 @@
 """Step 20 acceptance: scripted wizard run (pexpect) on a clean HOME produces a
 working config; install-service emits units; `chief run` wires everything."""
 
+import stat
 import sys
 import tomllib
 
@@ -36,6 +37,84 @@ def test_wizard_is_idempotent(tmp_path, monkeypatch):
     (tmp_path / "POLICY.md").write_text("# POLICY\n## Muted topics\n- precious.rule\n")
     assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
     assert "precious.rule" in (tmp_path / "POLICY.md").read_text()  # never clobbers
+
+
+def test_wizard_preserves_existing_connections_and_token(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+    assert runner.invoke(
+        app, ["connect", "rss", "--url", "https://example.com/feed"]
+    ).exit_code == 0
+    assert runner.invoke(
+        app, ["connect", "composio", "--secret", "whsec_keep"]
+    ).exit_code == 0
+    before = read_config(tmp_path)
+
+    assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+    after = read_config(tmp_path)
+
+    assert after["ingest"]["rss_urls"] == ["https://example.com/feed"]
+    assert after["connectors"]["composio"]["webhook_secret"] == "whsec_keep"
+    assert after["ingest"]["webhook_token"] == before["ingest"]["webhook_token"]
+
+
+def test_wizard_generates_private_config_and_token(tmp_path, monkeypatch):
+    home = tmp_path / "chief-home"
+    monkeypatch.setenv("CHIEF_HOME", str(home))
+
+    assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+
+    cfg = read_config(home)
+    assert cfg["ingest"]["webhook_token"] != "change-me"
+    assert len(cfg["ingest"]["webhook_token"]) >= 32
+    assert stat.S_IMODE(home.stat().st_mode) == 0o700
+    for name in ("config.toml", "POLICY.md", "USER.md"):
+        assert stat.S_IMODE((home / name).stat().st_mode) == 0o600
+
+
+def test_wizard_blank_secret_answers_keep_existing_values(monkeypatch):
+    from cli import init as wizard
+
+    answers = wizard._answers_from_config(
+        {
+            "llm": {"backend": "deepseek", "api_key": "sk-keep"},
+            "delivery": {
+                "channels": ["telegram"],
+                "telegram_token": "bot-keep",
+                "chat_id": "42",
+            },
+        }
+    )
+    selections = iter(["deepseek", "telegram"])
+
+    class Prompt:
+        def __init__(self, answer):
+            self.answer = answer
+
+        def ask(self):
+            return self.answer
+
+    class Questionary:
+        @staticmethod
+        def select(*_args, **_kwargs):
+            return Prompt(next(selections))
+
+        @staticmethod
+        def password(*_args, **_kwargs):
+            return Prompt("")
+
+        @staticmethod
+        def text(message, *, default=""):
+            return Prompt("" if message == "Chat id (blank to keep existing)" else default)
+
+    monkeypatch.setitem(sys.modules, "questionary", Questionary)
+    monkeypatch.setattr(wizard, "_gh_authed", lambda: False)
+
+    updated = wizard._ask(answers)
+
+    assert updated["api_key"] == "sk-keep"
+    assert updated["telegram_token"] == "bot-keep"
+    assert updated["chat_id"] == "42"
 
 
 def test_wizard_interactive_all_enters(tmp_path):
