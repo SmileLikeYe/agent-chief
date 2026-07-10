@@ -2,9 +2,10 @@
 
 ## Supported versions
 
-| Version | Supported |
-|---------|-----------|
-| 0.1.x   | ✅        |
+| Version  | Supported |
+|----------|-----------|
+| 0.4.x    | ✅        |
+| <= 0.3.x | ❌        |
 
 ## Chief's security posture
 

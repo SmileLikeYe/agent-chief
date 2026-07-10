@@ -1,4 +1,4 @@
-.PHONY: test lint demo demo-gif showcase clean-dist build release-check readme-metrics
+.PHONY: test lint demo demo-gif showcase clean-dist build release-check release-metadata readme-metrics
 
 test:
 	uv run pytest
@@ -24,6 +24,9 @@ clean-dist:
 build: clean-dist
 	uv build
 
-release-check: lint test build
+release-metadata:
+	uv run python scripts/check_release_version.py
+
+release-check: lint test release-metadata build
 	uvx --isolated --from dist/agent_chief-*-py3-none-any.whl chief demo --fast > /dev/null
 	@echo "release check passed"

@@ -6,6 +6,8 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-07-10
+
 ### Added
 - **Cohort preference-learning benchmark** (`chief eval --cohort`): the reward
   loop, run over a committed 100-user dataset (`eval/personas.jsonl`, seeded and
@@ -14,8 +16,24 @@ All notable changes to Chief are documented here. The format follows
   a distribution: **64% of users converge** (median 3 rounds), held-out interrupt
   **F1 0.10 → 0.81**, a noise-tier breakdown, and the provable ceiling
   (`converged ∪ ceiling-capped == everyone`). Writes `eval/reports/cohort.md`;
-  write-up in `docs/eval/cohort-benchmark.md`. 11 new tests pin the numbers, the
-  dataset-vs-generator reproducibility, and the ceiling invariant (326 total).
+  write-up in `docs/eval/cohort-benchmark.md`. 11 tests pin the numbers, the
+  dataset-vs-generator reproducibility, and the ceiling invariant.
+- **Executable onboarding**: `chief token` prints the generated local webhook
+  credential for scripts, and real-source setup now uses one persistent CLI path.
+- **Release metadata guard**: tags must match `pyproject.toml` and the latest
+  CHANGELOG version before release artifacts can build.
+
+### Fixed
+- Quiet hours, scene inference, digest delivery, and nightly jobs now use the
+  user's local wall clock while persisted timestamps and rolling windows stay UTC.
+- Re-running `chief init` preserves connectors, custom settings, and existing
+  secrets instead of replacing the config with defaults.
+- Chief home and credential files are written atomically with `0700` / `0600`
+  permissions; new installs receive a random webhook bearer token.
+- The resident fails fast for demo fixtures or a hosted judge without an API key,
+  instead of claiming to be healthy and degrading only after the first event.
+- Linux systemd and macOS launchd service generation are tested separately;
+  GitHub Actions now runs all **341 tests** on both Ubuntu and macOS.
 
 ## [0.3.1] — 2026-07-06
 
@@ -127,6 +145,7 @@ Initial release: the full SPEC v3 implementation (Steps 1–24).
 - Fully offline deterministic demo (`uvx agent-chief demo`) with a
   full-table routing regression.
 
+[0.4.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/SmileLikeYe/agent-chief/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.1.0...v0.2.0
