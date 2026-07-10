@@ -30,7 +30,7 @@ foreground_app = false              # privacy-sensitive scene signal, default OF
 [ingest]
 github = false                      # poll `gh` notifications every 5 min
 rss_urls = []                       # e.g. ["https://hnrss.org/frontpage"]
-webhook_token = "change-me"         # bearer token for POST /v1/events
+webhook_token = "generated-by-chief-init"  # bearer token for POST /v1/events
 webhook_port = 8787
 
 [connectors.composio]

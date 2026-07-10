@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/1177a237-3f0f-4512-baef-dcc9f2c75c6d
 
 [Quickstart](#-60-second-quickstart) · [How it works](#-how-it-decides) ·
 [Evaluated, not asserted](#-evaluated-not-asserted) ·
-[Connect your agent](#-connect-your-agent-3-lines) · [Docs](docs/) ·
+[Connect your agent](#-connect-your-agent) · [Docs](docs/) ·
 [简体中文](README.zh-CN.md)
 
 </div>
@@ -71,8 +71,7 @@ then it does exactly one of three things:
 uvx agent-chief demo        # zero keys, zero config, fully offline
 ```
 
-Prefer a permanent install? `pip install agent-chief` (or `uv tool install
-agent-chief`) puts `chief` on your PATH.
+Prefer pip? `pip install agent-chief` installs the same `chief` command.
 
 You'll watch a day of an engineer's life replay: 24 events in → 14 blocked ·
 6 batched · 3 handled (all verified) · **interrupted exactly once**.
@@ -80,8 +79,9 @@ You'll watch a day of an engineer's life replay: 24 events in → 14 blocked ·
 Ready for real sources?
 
 ```bash
-uvx agent-chief init        # 60s wizard, every question skippable
-chief run                   # the resident brain
+uv tool install agent-chief # install the persistent `chief` command
+chief init                  # 60s wizard, every question skippable
+chief run                   # resident brain + local console
 ```
 
 ## 🔕 Kill the "all clear" reports
@@ -244,9 +244,10 @@ flowchart LR
 
 Deep dive: **[docs/architecture.md](docs/architecture.md)**.
 
-## 🔌 Connect your agent (3 lines)
+## 🔌 Connect your agent
 
 ```bash
+export CHIEF_TOKEN="$(chief token)"
 curl -X POST http://localhost:8787/v1/events \
   -H "Authorization: Bearer $CHIEF_TOKEN" -H "Content-Type: application/json" \
   -d '{"source":"my-agent","topic":"dev.ci","summary":"CI failed on main"}'

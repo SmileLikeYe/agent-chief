@@ -36,6 +36,7 @@ Content-Type: application/json
 Minimal working example:
 
 ```bash
+export CHIEF_TOKEN="$(chief token)"
 curl -X POST http://localhost:8787/v1/events \
   -H "Authorization: Bearer $CHIEF_TOKEN" \
   -H "Content-Type: application/json" \

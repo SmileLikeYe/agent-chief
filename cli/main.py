@@ -271,6 +271,18 @@ def init(
 
 
 @app.command()
+def token():
+    """Print the local webhook bearer token for scripts and agents."""
+    from core.config import config_path, load_config
+
+    value = load_config().get("ingest", {}).get("webhook_token")
+    if not value:
+        typer.echo(f"no webhook token at {config_path()} — run: chief init", err=True)
+        raise typer.Exit(code=2)
+    typer.echo(value)
+
+
+@app.command()
 def run(
     once: bool = typer.Option(False, "--once", hidden=True, help="Assemble, verify, exit."),
 ):

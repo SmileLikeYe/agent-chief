@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # The whole integration: POST a candidate event, get a Decision back.
-# Token comes from ~/.chief/config.toml [ingest].webhook_token
+# Override CHIEF_TOKEN for a remote Chief; local installs read it from `chief token`.
 set -euo pipefail
 
 CHIEF_URL="${CHIEF_URL:-http://localhost:8787}"
-CHIEF_TOKEN="${CHIEF_TOKEN:-change-me}"
+CHIEF_TOKEN="${CHIEF_TOKEN:-$(chief token)}"
 
 curl -sS -X POST "$CHIEF_URL/v1/events" \
   -H "Authorization: Bearer $CHIEF_TOKEN" \

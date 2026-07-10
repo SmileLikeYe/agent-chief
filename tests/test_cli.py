@@ -1,5 +1,7 @@
 """Step 1 acceptance: `chief --help` lists all SPEC §5 subcommands."""
 
+import tomllib
+
 from typer.testing import CliRunner
 
 from cli.main import app
@@ -10,6 +12,7 @@ SUBCOMMANDS = [
     "demo",
     "init",
     "run",
+    "token",
     "ui",
     "digest",
     "status",
@@ -30,3 +33,16 @@ def test_version_flag():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert result.output.startswith("chief ")
+
+
+def test_token_prints_configured_webhook_token(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+    expected = tomllib.loads((tmp_path / "config.toml").read_text(encoding="utf-8"))[
+        "ingest"
+    ]["webhook_token"]
+
+    result = runner.invoke(app, ["token"])
+
+    assert result.exit_code == 0
+    assert result.output.strip() == expected

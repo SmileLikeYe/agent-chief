@@ -27,6 +27,18 @@ from memory.store import MemoryStore
 
 logger = logging.getLogger(__name__)
 console = Console()
+REMOTE_JUDGES = {"deepseek", "anthropic", "openai"}
+
+
+def judge_config_error(llm: dict) -> str | None:
+    backend = llm.get("backend", "fixtures")
+    if backend == "fixtures":
+        return "fixtures is demo-only; run `chief init` and choose a real judge backend"
+    if backend in REMOTE_JUDGES and not llm.get("api_key") and not llm.get("base_url"):
+        return f"{backend} requires [llm].api_key; run `chief init` to configure it"
+    if backend not in {*REMOTE_JUDGES, "ollama"}:
+        return f"unknown judge backend {backend!r}; run `chief init` to choose one"
+    return None
 
 
 def make_actor(state: State, config: dict, channels: list):
@@ -145,6 +157,9 @@ async def run_resident(once: bool = False) -> None:
         raise SystemExit(1)
 
     llm = config.get("llm", {})
+    if error := judge_config_error(llm):
+        console.print(f"[red]judge is not configured[/red]: {error}")
+        raise SystemExit(2)
     quiet = config.get("quiet", {})
     ingest_cfg = config.get("ingest", {})
     delivery_cfg = config.get("delivery", {})
