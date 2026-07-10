@@ -13,6 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --dev
+      - run: uv run python scripts/check_release_version.py "${GITHUB_REF_NAME#v}"
       - run: uv run ruff check .
       - run: uv run pytest
       - run: uv build

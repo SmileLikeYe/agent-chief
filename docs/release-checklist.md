@@ -1,12 +1,27 @@
-# Release checklist — v0.2.0
+# Release checklist — v0.4.0
 
 ## Pre-flight (automated)
+- [x] Package, lockfile, and CHANGELOG agree on `0.4.0`
+- [x] `make release-check` — lint + 341 tests + metadata guard + wheel smoke test
+- [x] GitHub Actions covers Ubuntu and macOS
+
+## Publish (after this PR merges)
+- [ ] Tag `v0.4.0` from `main`
+- [ ] Verify the Release workflow attaches the built artifacts
+- [ ] Verify Trusted Publishing uploads `agent-chief==0.4.0` to PyPI
+- [ ] Verify `uvx agent-chief --version` and `uvx agent-chief demo` from PyPI
+
+---
+
+# Previous releases
+
+## v0.2.0 pre-flight
 - [x] `make release-check` — lint + tests + build + demo runs from the built wheel
 - [x] CHANGELOG.md entry for v0.2.0
 - [x] Git tag `v0.2.0` → the Release workflow builds, re-verifies, and attaches dist/*
 - [x] GitHub releases published for v0.1.0 (retro) and v0.2.0 (latest)
 
-## Publish (needs human credentials)
+## PyPI status
 - [x] Real PyPI: published `agent-chief` 0.3.1 (2026-07-07); verified
       `uvx agent-chief demo` and `uvx agent-chief --version` from the live index
 - [x] Restored the PyPI badge in README.md / README.zh-CN.md

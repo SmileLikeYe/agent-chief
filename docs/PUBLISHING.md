@@ -28,11 +28,11 @@ artifacts on a `v*` tag). Publishing then triggers on the **published release**:
 
 ```bash
 # 1. bump + changelog (the heading format is load-bearing)
-#    - pyproject.toml: version = "0.3.2"
-#    - CHANGELOG.md:   ## [0.3.2] — <date>
+#    - pyproject.toml: version = "0.4.0"
+#    - CHANGELOG.md:   ## [0.4.0] — <date>
 # 2. tag and push
-git tag -a v0.3.2 -m "Chief v0.3.2"
-git push origin v0.3.2
+git tag -a v0.4.0 -m "Chief v0.4.0"
+git push origin v0.4.0
 # → release.yml builds the GitHub Release
 # → publish.yml uploads to PyPI when that release is published
 ```

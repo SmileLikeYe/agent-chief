@@ -62,8 +62,8 @@ then it does exactly one of three things:
 | 📝 **Explainable, editable policy** | Everything it learns distills nightly into a human-readable `POLICY.md`. Your edits win, effective immediately. |
 | ✅ **Verified dispatch** | Agents report "done"; Chief checks. Acceptance command or LLM second opinion — fails closed. |
 | 🔌 **Protocol, not pipes** | One `POST /v1/events` (or MCP `propose`) connects anything in minutes. |
-| 🔒 **Local-first** | One SQLite file + markdown under `~/.chief`. No cloud, no telemetry, no web UI. |
-| 🔬 **Evaluated, not asserted** | 326 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
+| 🔒 **Local-first** | One SQLite file + markdown under `~/.chief`. No hosted service or telemetry; the local console stays on `127.0.0.1`. |
+| 🔬 **Evaluated, not asserted** | 341 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
 
 ## ⚡ 60-second quickstart
 
@@ -192,7 +192,7 @@ run yourself — no keys, no network. Claims that can't be measured don't ship.
 | **Graceful degradation** | judge offline → rules-only conservative routing, never interrupts blind, auto-heals | chaos-injection tests |
 | **Prompt governance** | no prompt change merges without an eval diff on the golden set | `chief eval --compare v1 v2` |
 
-**326 tests, fully offline.** The demo routing table is a full-table
+**341 tests, fully offline.** The demo routing table is a full-table
 regression — every event's route is pinned, so a behavior change can never slip
 through silently.
 
@@ -323,8 +323,9 @@ skills/     OpenClaw integration (propose-and-obey)
 
 ## 🗺 Roadmap & contributing
 
-See [ROADMAP.md](ROADMAP.md) for what's deliberately out of v1 (web UI, cloud
-sync, Slack/Discord delivery, …) and [CONTRIBUTING.md](CONTRIBUTING.md) to get
+See [ROADMAP.md](ROADMAP.md) for what's deliberately out of v1 (hosted or
+multi-user web UI, cloud sync, Slack/Discord delivery, …) and
+[CONTRIBUTING.md](CONTRIBUTING.md) to get
 hacking — the dev loop is `uv sync --dev && make test`. Design decisions live
 as one-line ADRs in [docs/decisions.md](docs/decisions.md);
 [SPEC.md](SPEC.md) is the full implementation spec the project was built from,
@@ -333,8 +334,9 @@ step by step ([PROGRESS.md](PROGRESS.md)).
 ## 🔒 Privacy
 
 Local-first by construction: one SQLite file + markdown under `~/.chief`.
-No cloud, no telemetry, no web UI, no arbitrary shell execution. The only
-network calls are the ones you configure (your LLM backend, your Telegram bot).
+No hosted service, no telemetry, no arbitrary shell execution. The web console
+binds only to `127.0.0.1`; other network calls are the ones you configure (your
+LLM backend, your Telegram bot).
 
 ## ⭐ Star history
 
