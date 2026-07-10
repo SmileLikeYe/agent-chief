@@ -2,6 +2,7 @@
 decisions (deliver/dispatch), and fold near-duplicates via triage merge."""
 
 import asyncio
+from datetime import UTC, datetime, timedelta, timezone
 
 from core.embedding import HashEmbedder
 from core.state import State
@@ -74,3 +75,39 @@ async def test_triage_merge_folds_near_duplicate(tmp_path):
 
         merged = await state.load_event(first.event_id)
         assert "(retry)" in merged.summary
+
+
+async def test_quiet_hours_use_local_wall_clock(tmp_path):
+    utc_now = datetime(2026, 7, 10, 5, 30, tzinfo=UTC)
+    local_now = utc_now.astimezone(timezone(timedelta(hours=8)))
+
+    async with State.open(tmp_path / "s.db") as state:
+        brain = make_brain(
+            state,
+            tmp_path,
+            now_fn=lambda: utc_now,
+            local_now_fn=lambda: local_now,
+        )
+        decision = await brain.process(dict(PAYLOAD))
+
+        assert decision.stage == 3
+        assert "quiet_hours" not in decision.matched_rules
+        event = await state.load_event(decision.event_id)
+        assert event.received_at == utc_now
+
+
+async def test_local_quiet_hours_apply_when_utc_is_daytime(tmp_path):
+    utc_now = datetime(2026, 7, 10, 15, 30, tzinfo=UTC)
+    local_now = utc_now.astimezone(timezone(timedelta(hours=8)))
+
+    async with State.open(tmp_path / "s.db") as state:
+        brain = make_brain(
+            state,
+            tmp_path,
+            now_fn=lambda: utc_now,
+            local_now_fn=lambda: local_now,
+        )
+        decision = await brain.process(dict(PAYLOAD))
+
+        assert decision.stage == 1
+        assert decision.matched_rules == ["quiet_hours"]

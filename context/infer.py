@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any, Protocol
 
 from core.schema import SceneState
@@ -90,7 +90,7 @@ class SceneEngine:
     def __init__(
         self,
         providers: list[ContextProvider],
-        now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+        now_fn: Callable[[], datetime] = lambda: datetime.now().astimezone(),
     ):
         self.providers = providers
         self.now_fn = now_fn
