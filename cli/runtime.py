@@ -92,6 +92,8 @@ async def tick_jobs(
     digest_times: list[str],
     now: datetime,
     fired: set,
+    *,
+    wall_time: datetime | None = None,
 ) -> None:
     """One scheduler tick: digest at configured times, distillation+expiry at 03:00."""
     from datetime import timedelta
@@ -99,10 +101,12 @@ async def tick_jobs(
     from core.digest import build_digest, distill, render_digest
     from delivery.base import DeliveryMessage, deliver
 
-    hm, day = f"{now:%H:%M}", f"{now:%Y-%m-%d}"
+    wall_time = wall_time or now
+    hm, day = f"{wall_time:%H:%M}", f"{wall_time:%Y-%m-%d}"
     if hm in digest_times and (day, hm) not in fired:
         fired.add((day, hm))
         digest = await build_digest(state, memory, since=now - timedelta(hours=24), now=now)
+        digest.at = wall_time
         msg = DeliveryMessage(
             summary=render_digest(digest), event_id=f"digest_{day}_{hm}",
             topic="chief.digest", buttons=False,
@@ -120,8 +124,16 @@ async def tick_jobs(
 async def scheduler_loop(state, memory, policy_file, channels, digest_times) -> None:
     fired: set = set()
     while True:
+        now = datetime.now(UTC)
         await tick_jobs(
-            state, memory, policy_file, channels, digest_times, datetime.now(UTC), fired
+            state,
+            memory,
+            policy_file,
+            channels,
+            digest_times,
+            now,
+            fired,
+            wall_time=now.astimezone(),
         )
         await asyncio.sleep(30)
 
@@ -147,19 +159,26 @@ async def run_resident(once: bool = False) -> None:
         await learner.rebuild_classifier()
 
         channels = make_channels(delivery_cfg)
+        def local_now_fn() -> datetime:
+            return datetime.now().astimezone()
+
         brain = Brain(
             state,
             make_judge(llm),
             policy_path=policy_path(),
             quiet_hours=quiet.get("hours", "23:00-08:00"),
             night_whitelist=quiet.get("whitelist", ["family", "production_incident"]),
-            scene_engine=SceneEngine([ClockProvider(quiet.get("hours", "23:00-08:00"))]),
+            scene_engine=SceneEngine(
+                [ClockProvider(quiet.get("hours", "23:00-08:00"))],
+                now_fn=local_now_fn,
+            ),
             classifier=classifier,
             memory=memory,
             shadow=shadow,
             audit=AuditLog(audit_log_path()),
             embedder=embedder,
             actor=make_actor(state, config, channels),
+            local_now_fn=local_now_fn,
             user_profile=(
                 user_md_path().read_text(encoding="utf-8") if user_md_path().exists() else ""
             ),

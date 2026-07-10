@@ -37,6 +37,7 @@ class StaticJudge:
 
 def make_brain(state, tmp_path, judge=None, **kw) -> Brain:
     kw.setdefault("now_fn", lambda: FIXED_NOW)
+    kw.setdefault("local_now_fn", kw["now_fn"])
     return Brain(
         state,
         judge or StaticJudge(),

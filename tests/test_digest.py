@@ -2,7 +2,7 @@
 POLICY line; digest golden-file test (Connections + shadow annotations)."""
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 from core.digest import build_digest, distill, render_digest
@@ -121,6 +121,28 @@ async def test_scheduler_tick_fires_digest_once(tmp_path, capsys):
                         ["18:30"], NOW, fired)  # same minute → no double send
         out = capsys.readouterr().out
         assert out.count("chief digest") == 1
+
+
+async def test_scheduler_uses_local_wall_time(tmp_path, capsys):
+    from cli.runtime import tick_jobs
+    from delivery.terminal import TerminalChannel
+
+    utc_now = datetime(2026, 7, 6, 10, 30, tzinfo=UTC)
+    local_now = utc_now.astimezone(timezone(timedelta(hours=8)))
+    async with State.open(tmp_path / "s.db") as state:
+        store = await seed(state)
+        await tick_jobs(
+            state,
+            store,
+            tmp_path / "POLICY.md",
+            [TerminalChannel()],
+            ["18:30"],
+            utc_now,
+            set(),
+            wall_time=local_now,
+        )
+
+        assert "chief digest" in capsys.readouterr().out
 
 
 async def test_scheduler_tick_runs_distillation_at_3am(tmp_path):

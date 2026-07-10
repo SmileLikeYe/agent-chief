@@ -68,6 +68,7 @@ class Brain:
         embedder=None,
         actor: Callable | None = None,
         now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+        local_now_fn: Callable[[], datetime] | None = None,
         judge_timeout: float = 150.0,  # > HTTPJudge worst case (2 attempts x 60s) + slack
     ):
         self.state = state
@@ -86,6 +87,7 @@ class Brain:
         self.embedder = embedder
         self.actor = actor  # async (Event, Decision) -> None; delivery/dispatch side
         self.now_fn = now_fn
+        self.local_now_fn = local_now_fn or (lambda: self.now_fn().astimezone())
         self.judge_timeout = judge_timeout
         self._degraded: bool | None = None  # None = unknown until first judgment
         self._last_error: str | None = None
@@ -116,6 +118,7 @@ class Brain:
         from ingest.normalize import normalize
 
         now = self.now_fn()
+        local_now = self.local_now_fn()
         clock = _StageClock()
         if isinstance(payload, Event):
             event = payload
@@ -124,7 +127,7 @@ class Brain:
         clock.mark("normalize")
 
         policy = load_policy(self.policy_path)
-        scene = self._scene(now)
+        scene = self._scene(local_now)
         recent_keys = await self.state.recent_dedup_keys(now - timedelta(hours=24))
 
         # Triage merge (SPEC §4.2 step 1): a same-topic near-duplicate within
@@ -146,7 +149,7 @@ class Brain:
 
         hit = stage1(
             event,
-            now=now,
+            now=local_now,
             policy=policy,
             quiet_hours=self.quiet_hours,
             night_whitelist=self.night_whitelist,
