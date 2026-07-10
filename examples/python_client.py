@@ -12,11 +12,13 @@ import os
 import httpx
 
 CHIEF_URL = os.environ.get("CHIEF_URL", "http://localhost:8787")
-CHIEF_TOKEN = os.environ.get("CHIEF_TOKEN", "change-me")
+CHIEF_TOKEN = os.environ.get("CHIEF_TOKEN", "")
 
 
 class ChiefClient:
     def __init__(self, url: str = CHIEF_URL, token: str = CHIEF_TOKEN):
+        if not token:
+            raise ValueError("set CHIEF_TOKEN first: export CHIEF_TOKEN=\"$(chief token)\"")
         self._http = httpx.Client(
             base_url=url, headers={"Authorization": f"Bearer {token}"}, timeout=10
         )

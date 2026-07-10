@@ -155,6 +155,39 @@ def test_install_service_emits_unit(tmp_path, monkeypatch):
 def test_chief_run_smoke_once(tmp_path, monkeypatch):
     monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
     assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+    from core.config import serialize_config, write_private_text
+
+    cfg = read_config(tmp_path)
+    cfg["llm"].update(backend="ollama", api_key="")
+    write_private_text(tmp_path / "config.toml", serialize_config(cfg))
     result = runner.invoke(app, ["run", "--once"])
     assert result.exit_code == 0, result.output
     assert "chief is up" in result.output
+
+
+def test_chief_run_rejects_fixture_backend(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    monkeypatch.setattr("cli.init._ollama_available", lambda: False)
+    assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+
+    result = runner.invoke(app, ["run", "--once"])
+
+    assert result.exit_code == 2
+    assert "fixtures" in result.output
+    assert "demo" in result.output.lower()
+
+
+def test_chief_run_rejects_missing_remote_api_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("CHIEF_HOME", str(tmp_path))
+    assert runner.invoke(app, ["init", "--defaults"]).exit_code == 0
+    from core.config import serialize_config, write_private_text
+
+    cfg = read_config(tmp_path)
+    cfg["llm"].update(backend="deepseek", api_key="")
+    write_private_text(tmp_path / "config.toml", serialize_config(cfg))
+
+    result = runner.invoke(app, ["run", "--once"])
+
+    assert result.exit_code == 2
+    assert "api_key" in result.output
+    assert "chief init" in result.output

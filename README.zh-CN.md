@@ -11,7 +11,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [快速开始](#-60-秒快速开始) · [工作原理](#-它如何决策) ·
-[接入你的智能体](#-接入你的智能体3-行)· [文档](docs/) ·
+[接入你的智能体](#-接入你的智能体)· [文档](docs/) ·
 [English](README.md)
 
 </div>
@@ -58,8 +58,7 @@ RSS、监控。一切先流经它;它自己思考;然后只做三件事之一:
 uvx agent-chief demo        # 零密钥、零配置、完全离线
 ```
 
-想常驻安装?`pip install agent-chief`(或 `uv tool install agent-chief`)会把
-`chief` 装到 PATH 上。
+也可以使用 `pip install agent-chief`,同样会安装 `chief` 命令。
 
 你会看到一位工程师的一天被回放:24 个事件 → 14 个拦截 · 6 个归入摘要 ·
 3 个代办处理(全部核验)· **只打断你一次**。
@@ -67,8 +66,9 @@ uvx agent-chief demo        # 零密钥、零配置、完全离线
 准备接真实信源了?
 
 ```bash
-uvx agent-chief init        # 60 秒向导,每个问题都可跳过
-chief run                   # 常驻大脑
+uv tool install agent-chief # 安装常驻的 `chief` 命令
+chief init                  # 60 秒向导,每个问题都可跳过
+chief run                   # 常驻大脑与本地控制台
 ```
 
 ## 🔕 干掉"一切正常"报告
@@ -159,9 +159,10 @@ flowchart LR
 
 深入阅读:**[docs/architecture.md](docs/architecture.md)**。
 
-## 🔌 接入你的智能体(3 行)
+## 🔌 接入你的智能体
 
 ```bash
+export CHIEF_TOKEN="$(chief token)"
 curl -X POST http://localhost:8787/v1/events \
   -H "Authorization: Bearer $CHIEF_TOKEN" -H "Content-Type: application/json" \
   -d '{"source":"my-agent","topic":"dev.ci","summary":"CI failed on main"}'

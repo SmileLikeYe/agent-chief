@@ -5,12 +5,26 @@ from pathlib import Path
 ROOT = Path(__file__).parent.parent
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 PROTOCOL = (ROOT / "docs" / "protocol.md").read_text(encoding="utf-8")
+SEND_EVENT = (ROOT / "examples" / "send-event.sh").read_text(encoding="utf-8")
+PYTHON_CLIENT = (ROOT / "examples" / "python_client.py").read_text(encoding="utf-8")
 
 
 def test_readme_has_hook_and_quickstart():
     assert "chief of staff" in README
     assert "uvx agent-chief demo" in README
     assert "demo.gif" in README  # GIF placeholder
+
+
+def test_real_sources_quickstart_uses_installed_cli_and_token_command():
+    assert "uv tool install agent-chief" in README
+    assert "uvx agent-chief init" not in README
+    assert 'export CHIEF_TOKEN="$(chief token)"' in README
+
+
+def test_examples_do_not_fall_back_to_public_default_token():
+    assert "change-me" not in SEND_EVENT
+    assert "change-me" not in PYTHON_CLIENT
+    assert "chief token" in SEND_EVENT
 
 
 def test_readme_kill_all_clear_section():

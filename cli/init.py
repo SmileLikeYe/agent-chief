@@ -220,7 +220,14 @@ def run_wizard(defaults_only: bool = False) -> Path:
         write_private_text(user_md_path(), _template("USER.template.md"))
 
     console.print(f"✅ wrote {config_path()}")
-    console.print("Next: [bold]chief run[/bold] (or [bold]chief install-service[/bold])")
+    if answers["backend"] == "fixtures":
+        console.print(
+            "[yellow]fixtures is demo-only[/yellow] — run [bold]chief init[/bold] "
+            "and choose Ollama or a hosted backend before starting real sources"
+        )
+    else:
+        console.print("Next: [bold]chief run[/bold] (or [bold]chief install-service[/bold])")
+    console.print("Webhook token for integrations: [bold]chief token[/bold]")
     return config_path()
 
 
