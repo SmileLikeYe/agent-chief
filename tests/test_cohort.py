@@ -19,8 +19,14 @@ _CACHE: dict = {}
 
 async def _report():
     if "r" not in _CACHE:
-        _CACHE["r"] = await run_cohort()
+        _CACHE["r"] = await run_cohort()  # pins on (production default)
     return _CACHE["r"]
+
+
+async def _report_nopins():
+    if "np" not in _CACHE:
+        _CACHE["np"] = await run_cohort(pins=False)  # EMA-only structural ceiling
+    return _CACHE["np"]
 
 
 # --- the committed dataset ---------------------------------------------------
@@ -63,8 +69,8 @@ async def test_cohort_learns_across_the_population():
     # held-out interrupt quality jumps from near-useless to strong
     assert report.f1_before < 0.3
     assert report.f1_after > 0.7
-    # a real majority converge, but not everyone (the ceiling is real)
-    assert 0.5 <= report.converged_frac < 1.0
+    # with pins almost everyone converges, but noise still stops a few
+    assert 0.9 <= report.converged_frac < 1.0
 
 
 async def test_mean_curve_rises_and_never_regresses():
@@ -75,17 +81,32 @@ async def test_mean_curve_rises_and_never_regresses():
     assert all(a <= b + 1e-9 for a, b in zip(curve, curve[1:], strict=False))
 
 
-async def test_convergence_is_exactly_the_reachable_users():
-    """The honest self-consistency: a user converges (≥95%) iff preference can
-    lift every wanted topic. One unreachable topic caps agreement at 11/12."""
-    report = await _report()
+async def test_without_pins_convergence_is_exactly_the_reachable_users():
+    """EMA-only self-consistency: a user converges (≥95%) iff preference can lift
+    every wanted topic. One unreachable topic caps agreement at 11/12."""
+    report = await _report_nopins()
     for r in report.converged:
         assert r.n_unreachable == 0
     for r in report.ceiling_capped:
         assert r.converged_round is None
         assert r.final < 0.95
-    # partition: converged ∪ ceiling-capped == everyone
+    # partition: converged ∪ ceiling-capped == everyone (no pins to rescue anyone)
     assert len(report.converged) + len(report.ceiling_capped) == report.n
+
+
+async def test_pins_break_the_structural_ceiling():
+    """The v2 result: escalating to a hard pin rescues users EMA could never
+    lift, and the only ones left are noise-limited, not arithmetic-limited."""
+    off = await _report_nopins()
+    on = await _report()
+    assert off.converged_frac < on.converged_frac  # pins strictly help
+    # every rescued user was genuinely EMA-unreachable and now converges
+    assert on.rescued and all(r.n_unreachable > 0 for r in on.rescued)
+    for r in on.rescued:
+        assert r.converged_round is not None and r.pinned
+    # the residual non-converged are the noisiest feedback, not a math ceiling
+    residual = [r for r in on.ceiling_capped if r.converged_round is None]
+    assert residual and all(r.noise_tier in ("noisy", "erratic") for r in residual)
 
 
 async def test_noise_degrades_convergence():
@@ -105,12 +126,18 @@ async def test_cohort_is_deterministic():
 async def test_published_numbers_are_pinned():
     """The exact figures the README/blog cite — pin them so a scorer or persona
     change can't silently move a published claim (mirrors the learning eval)."""
-    report = await _report()
-    assert report.converged_frac == 0.64
+    report = await _report()  # pins on
+    assert report.converged_frac == 0.95
     assert round(report.f1_before, 2) == 0.10
-    assert round(report.f1_after, 2) == 0.81
-    assert report.convergence_pct(0.50) == 3
-    assert len(report.ceiling_capped) == 36
+    assert round(report.f1_after, 2) == 0.87
+    assert report.convergence_pct(0.50) == 5
+    assert len(report.rescued) == 31
+    assert report.pinned_users == 40
+    # the EMA-only baseline the pins improve on is pinned too
+    off = await _report_nopins()
+    assert off.converged_frac == 0.64
+    assert round(off.f1_after, 2) == 0.81
+    assert len(off.ceiling_capped) == 36
 
 
 # --- report + CLI ------------------------------------------------------------
@@ -121,7 +148,8 @@ async def test_markdown_report_states_headline_and_ceiling():
     assert "users converge" in md
     assert "Held-out interrupt F1" in md
     assert "By feedback-noise tier" in md
-    assert "The ceiling, stated" in md  # honesty section is not optional
+    assert "breaking it with pins" in md  # the v2 honesty section
+    assert "noise-limited, not arithmetic" in md
 
 
 def test_cli_eval_cohort_writes_report(tmp_path):

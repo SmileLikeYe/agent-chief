@@ -168,6 +168,21 @@ class Brain:
                 stage=1,
                 trace=DecisionTrace(stages=clock.stages),
             )
+        elif await self.state.is_pinned(event.topic):
+            # learned pin (SPEC §4.6): repeated should-interrupt corrections that
+            # EMA weights couldn't satisfy → a hard interrupt rule, no judge call.
+            clock.mark("stage1", note="learned pin fired")
+            decision = Decision(
+                event_id=event.id,
+                route="interrupt",
+                scene=scene.scene,
+                scene_confidence=scene.confidence,
+                cost=0.0,
+                matched_rules=["pin"],
+                reason="learned pin: you repeatedly asked to be interrupted for this topic",
+                stage=1,
+                trace=DecisionTrace(stages=clock.stages),
+            )
         else:
             clock.mark("stage1", note="no hard rule fired")
             decision = await self._stage2_or_judge(event, scene, policy, now, clock)

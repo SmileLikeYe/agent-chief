@@ -9,6 +9,16 @@ All notable changes to Chief are documented here. The format follows
 ## [0.5.0] — 2026-07-13
 
 ### Added
+- **Learned interrupt pins** (SPEC §4.6, cohort-v2): when a `should_interrupt`
+  correction keeps arriving but the EMA weight step has all but stopped (the
+  weights can't lift a quiet topic over the scene's interrupt bar), the learner
+  escalates to a **hard per-topic pin**, and the brain routes that topic to
+  interrupt like a stage-1 rule (no judge call). On the 100-user cohort this
+  raises convergence from **64% → 95%** (rescuing 31 of 36 structurally-capped
+  users; held-out F1 0.81 → 0.87), and the only users left are the noisiest — the
+  residual ceiling is now noise-limited, not arithmetic. Surfaced in the console's
+  `/api/learning`. `chief eval --cohort` reports the pin-inclusive numbers;
+  `run_cohort(pins=False)` reproduces the EMA-only baseline.
 - **Adversarial red-team suite** (`chief eval --redteam`, exits 1 on any breach):
   16 hostile payloads across 5 categories — guard bypass (injection can't
   override a mute/dedup/quiet-hours), persuasion-ignored (prose doesn't move the

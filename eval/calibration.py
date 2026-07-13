@@ -195,7 +195,9 @@ def _operating_points(by_scene: dict[str, list[tuple[float, bool]]]) -> list[Sce
 
 
 async def run_calibration() -> CalibrationReport:
-    report = await run_cohort()
+    # pins are a hard-rule override orthogonal to the score; calibration measures
+    # the *score's* quality, so run without them to keep the two evals decoupled.
+    report = await run_cohort(pins=False)
     after: list[tuple[float, bool]] = []
     before: list[tuple[float, bool]] = []
     by_scene: dict[str, list[tuple[float, bool]]] = {}

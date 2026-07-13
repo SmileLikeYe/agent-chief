@@ -2,6 +2,7 @@
 
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -265,6 +266,22 @@ class State:
             "INSERT OR REPLACE INTO topic_weights (topic, weights) VALUES (?,?)",
             (topic, json.dumps(weights)),
         )
+
+    # learned interrupt pins (SPEC §4.6): when EMA saturates but the user keeps
+    # correcting a topic to "should interrupt", escalate to a hard per-topic rule.
+    _PINS_KEY = "learned_pins"
+
+    async def add_pin(self, topic: str, at: datetime) -> None:
+        pins = await self.get_meta(self._PINS_KEY) or {}
+        pins.setdefault(topic, at.isoformat())
+        await self.set_meta(self._PINS_KEY, pins)
+
+    async def is_pinned(self, topic: str) -> bool:
+        pins = await self.get_meta(self._PINS_KEY) or {}
+        return topic in pins
+
+    async def learned_pins(self) -> dict:
+        return await self.get_meta(self._PINS_KEY) or {}
 
     # scene log
     async def log_scene(self, s: SceneState) -> None:

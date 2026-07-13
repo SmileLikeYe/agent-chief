@@ -48,6 +48,12 @@ async def apply_feedback(state, event_id: str, signal: str, at, classifier=None)
 WEIGHT_MIN, WEIGHT_MAX = 0.02, 0.5
 THRESHOLD_MIN, THRESHOLD_MAX = 0.35, 0.95
 PROPENSITY_ALPHA = 0.2
+# The ceiling escalation (SPEC §4.6): EMA weights only pull toward the event's
+# components, so a wanted-but-quiet topic converges below its scene's interrupt
+# bar and stays there. When a `should_interrupt` correction arrives but the
+# weight update has all but stopped moving, EMA has demonstrably run out of room
+# — escalate to a hard per-topic pin instead of nudging forever.
+PIN_CONVERGENCE_EPS = 0.01
 
 
 def tune_adjust(adjust: float, dismissed_fast_ratio: float) -> float:
@@ -117,11 +123,22 @@ class Learner:
             alpha, direction = SIGNAL_EFFECTS[signal]
             comps = decision.components or {}
             weights = await self.topic_weights(event.topic)
+            moved = 0.0
             for dim in DIMS:
                 target = comps.get(dim, 0.0) if direction > 0 else 0.0
                 w = (1 - alpha) * weights[dim] + alpha * target
-                weights[dim] = min(WEIGHT_MAX, max(WEIGHT_MIN, w))
+                w = min(WEIGHT_MAX, max(WEIGHT_MIN, w))
+                moved = max(moved, abs(w - weights[dim]))
+                weights[dim] = w
             await self.state.set_topic_weights(event.topic, weights)
+            # ceiling escalation: still being told to interrupt, but the weights
+            # have stopped moving → a nudge can't help; pin the topic outright.
+            if (
+                signal == "should_interrupt"
+                and moved < PIN_CONVERGENCE_EPS
+                and not await self.state.is_pinned(event.topic)
+            ):
+                await self.state.add_pin(event.topic, at)
 
         if signal == "promote":
             weights = await self.topic_weights(event.topic)

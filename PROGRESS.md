@@ -139,3 +139,19 @@ untrusted summaries with rich markup enabled and passed raw ANSI (fixed:
 `ValidationError`→422 handler in `ingest/http.py`). 12 tests (harness + HTTP
 413/401/422 + terminal rendering); write-up in `docs/security/red-team.md`.
 370 tests.
+
+## Step 42 — cohort v2: learned interrupt pins (2026-07-13)
+
+Broke the 36% structural ceiling from Step 38. EMA weights only pull toward an
+event's components, so a wanted-but-quiet topic converges below its scene's
+interrupt bar and stays there. New escalation (`core.learner`): when a
+should_interrupt correction arrives but the weight step < 0.01 (saturated), write
+a hard per-topic pin (`State.add_pin`, stored in meta); `core.brain` consults it
+right after stage-1 and forces interrupt like a policy rule, no judge call. Pins
+only escalate from should_interrupt, so they lift only *wanted* topics —
+precision preserved, §13 intact (content-blind, one-topic, no ML). Cohort
+convergence 64% → 95% (31/36 structurally-capped users rescued, held-out F1
+0.81 → 0.87); the 5 who remain are all erratic-noise — the residual ceiling is
+noise-limited, not arithmetic. `run_cohort(pins=False)` reproduces the EMA-only
+baseline; calibration runs pins=False to stay decoupled. Surfaced in
+`/api/learning`. 3 new pin tests + updated cohort tests. 374 tests.

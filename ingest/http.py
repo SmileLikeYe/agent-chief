@@ -221,6 +221,7 @@ def create_app(
         return {
             "default": default,
             "topics": rows,
+            "pins": await brain.state.learned_pins(),  # topics escalated to hard interrupt
             "signals": {
                 s: await brain.state.count_feedback(signal=s)
                 for s in ("should_interrupt", "should_not_interrupt",
