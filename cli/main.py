@@ -50,6 +50,9 @@ def eval_cmd(
     cohort: bool = typer.Option(
         False, "--cohort", help="Run the 100-user cohort preference-learning benchmark."
     ),
+    ablation: bool = typer.Option(
+        False, "--ablation", help="Ablate each funnel stage on the golden set (accuracy + cost)."
+    ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
     from rich.console import Console
@@ -65,6 +68,28 @@ def eval_cmd(
     )
 
     console = Console()
+
+    if ablation:
+        import asyncio
+
+        from eval.ablation import render_markdown as render_ablation
+        from eval.ablation import run_ablation
+
+        if compare[0] or backend != "fixtures":
+            console.print(
+                "[yellow]note[/yellow]: --ablation ignores --compare/--backend "
+                "(it sweeps the offline fixtures judge to stay deterministic)"
+            )
+        report = asyncio.run(run_ablation())
+        path = _writable_dir(out or REPORTS_DIR) / "ablation.md"
+        path.write_text(render_ablation(report), encoding="utf-8")
+        console.print(
+            f"[green]ablation[/green] full {report.full.agreement:.0%} · "
+            f"−stage-1 {report.runs['no_stage1'].agreement:.0%} "
+            f"(+{report.stage1_calls_saved} judge calls) · "
+            f"−judge {report.runs['no_judge'].agreement:.0%} → {path}"
+        )
+        return
 
     if cohort:
         import asyncio

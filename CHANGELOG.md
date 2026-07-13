@@ -6,6 +6,17 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Ablation eval** (`chief eval --ablation`): turns each funnel stage off on the
+  golden 200 and measures the accuracy **and** cost delta, so the three-stage
+  architecture (SPEC §4.4) is proven load-bearing rather than asserted. Stage-1
+  hard rules save **+42% of judge calls** and **+20 pp agreement** (state a
+  stateless judge can't see); the judge lifts **+38.5 pp** over the rules-only
+  degraded floor (61.5%); stage-2's similarity cache erases every judge call on
+  repeat traffic (199/200 routing preserved). Deterministic/offline; writes
+  `eval/reports/ablation.md`; write-up in `docs/eval/ablation.md`. 9 tests pin
+  the figures and the stage contracts.
+
 ## [0.4.0] — 2026-07-10
 
 ### Added

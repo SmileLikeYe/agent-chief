@@ -97,3 +97,16 @@ provable ceiling (`s ≥ √(T/5)`; a user converges iff every wanted topic is
 reachable, so `converged ∪ ceiling-capped == everyone`). 11 new tests pin the
 numbers, dataset-vs-generator reproducibility, and the ceiling invariant.
 326 tests. Write-up: `docs/eval/cohort-benchmark.md`.
+
+## Step 39 — per-stage ablation eval (2026-07-13)
+
+Proved the three-stage funnel (SPEC §4.4) is load-bearing, not architecture
+theater. `eval/ablation.py` (`chief eval --ablation`) runs the golden 200 with
+each stage disabled and reports accuracy + cost deltas, offline and
+deterministic: full funnel 100% / 141 judge calls; −stage-1 (judge-only) 80% /
+200 calls (+42% cost, −20 pp — the hard rules own state a stateless judge can't
+see); −judge (rules-only degraded) 61.5% (the judge adds +38.5 pp of
+discretion). Stage-2's similarity cache is measured on repeat traffic — its real
+job — erasing all 141 judge calls on identical replay (199/200 routing
+preserved). 9 tests pin the numbers and stage contracts; write-up in
+`docs/eval/ablation.md`. 350 tests.
