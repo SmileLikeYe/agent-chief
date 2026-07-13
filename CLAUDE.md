@@ -23,6 +23,7 @@ uv run chief eval --learning      # preference-learning reward-loop eval
 uv run chief eval --cohort        # 100-user cohort benchmark (eval/personas.jsonl)
 uv run chief eval --ablation      # per-stage ablation on the golden set (accuracy + cost)
 uv run chief eval --calibration   # routing-score discrimination (AUC) + calibration (ECE)
+uv run chief eval --redteam       # adversarial red-team suite (exits 1 on any breach)
 ```
 
 Published on PyPI: `uvx agent-chief demo` / `pip install agent-chief`.

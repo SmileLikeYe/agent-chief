@@ -10,6 +10,7 @@ Default port 8787, simple bearer token. Example:
 import hmac
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from pydantic import ValidationError
 
 from core.brain import Brain
 from core.schema import Decision
@@ -30,6 +31,14 @@ def create_app(
     except PackageNotFoundError:
         v = "0.0.0+source"
     app = FastAPI(title="chief ingest", version=v)
+
+    @app.exception_handler(ValidationError)
+    async def _on_validation_error(_request: Request, exc: ValidationError):
+        # Event payloads are untyped dicts validated inside brain.process, so a
+        # hostile/oversized field raises here — fail closed with 422, not a 500.
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=422, content={"detail": "invalid event payload"})
 
     def check_auth(request: Request) -> None:
         header = request.headers.get("authorization", "")

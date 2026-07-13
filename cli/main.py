@@ -56,6 +56,9 @@ def eval_cmd(
     calibration: bool = typer.Option(
         False, "--calibration", help="Score discrimination (AUC) + calibration (ECE) on the cohort."
     ),
+    redteam: bool = typer.Option(
+        False, "--redteam", help="Run the adversarial red-team suite (injection / payloads / §13)."
+    ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
     from rich.console import Console
@@ -71,6 +74,20 @@ def eval_cmd(
     )
 
     console = Console()
+
+    if redteam:
+        from eval.redteam import render_markdown as render_redteam
+        from eval.redteam import run_redteam
+
+        report = run_redteam()
+        path = _writable_dir(out or REPORTS_DIR) / "redteam.md"
+        path.write_text(render_redteam(report), encoding="utf-8")
+        tone = "green" if not report.breaches else "red"
+        console.print(
+            f"[{tone}]redteam[/{tone}] {report.contained}/{report.total} attacks "
+            f"contained across {len(report.categories)} categories → {path}"
+        )
+        raise typer.Exit(0 if not report.breaches else 1)
 
     if calibration:
         import asyncio

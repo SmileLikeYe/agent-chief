@@ -4,12 +4,23 @@ Levels, weakest to strongest: terminal print < desktop notification <
 Telegram silent < vibrate < Telegram ring.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Protocol
 
 from context.infer import SCENE_POLICY
 
 LEVELS = ["terminal", "desktop", "silent", "vibrate", "ring"]
+
+# Untrusted event text reaches a terminal/notification. Strip C0/C1 control
+# characters (ESC, NUL, BEL, …) so a hostile summary can't smuggle ANSI escape
+# sequences into the terminal — keep only newline and tab. Rich-markup injection
+# is handled separately at the terminal channel (Text() disables markup).
+_CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
+
+
+def strip_control(text: str) -> str:
+    return _CONTROL_RE.sub("", text)
 
 
 @dataclass
@@ -23,9 +34,9 @@ class DeliveryMessage:
 
 def render_message(msg: DeliveryMessage) -> str:
     """SPEC §4.5 template: `{summary}\\n{plan}\\n[Do it] [Later] [Mute this kind]`."""
-    lines = [msg.summary]
+    lines = [strip_control(msg.summary)]
     if msg.plan:
-        lines.append(msg.plan)
+        lines.append(strip_control(msg.plan))
     if msg.buttons:
         lines.append("[Do it] [Later] [Mute this kind]")
     return "\n".join(lines)

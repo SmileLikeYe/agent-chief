@@ -9,6 +9,23 @@ All notable changes to Chief are documented here. The format follows
 ## [0.5.0] — 2026-07-13
 
 ### Added
+- **Adversarial red-team suite** (`chief eval --redteam`, exits 1 on any breach):
+  16 hostile payloads across 5 categories — guard bypass (injection can't
+  override a mute/dedup/quiet-hours), persuasion-ignored (prose doesn't move the
+  score), malformed-payload fail-closed, executor shell-escape (SPEC §13), and
+  terminal-escape — **all contained**, offline and deterministic. Write-up in
+  `docs/security/red-team.md`.
+
+### Security
+- **Terminal-escape / rich-markup injection fixed.** Untrusted event summaries
+  were rendered into a rich `Panel` with markup enabled and raw ANSI passed
+  through. Control bytes are now stripped at the delivery chokepoint
+  (`delivery.base.strip_control`) and the terminal channel renders the body as
+  `rich.text.Text` (markup shown literally, never interpreted).
+- **Ingest now fails closed with 422.** A hostile/oversized field on `/v1/events`
+  raised an unhandled `ValidationError` (500); `ingest/http.py` now returns 422.
+
+### Added
 - **Calibration eval** (`chief eval --calibration`): measures whether the routing
   score is a *trustworthy* decision variable, on the cohort's held-out stream (the
   one offline classifier that makes real errors). Headline: the raw salience score

@@ -125,3 +125,17 @@ shown to be deliberate operating points (idle 83% recall → meeting 51%, precis
 ≥94% throughout). PersonaResult gained additive eval_scores_before/after so
 cohort's pinned numbers are untouched. 9 tests; write-up in
 `docs/eval/calibration.md`. 359 tests.
+
+## Step 41 — adversarial red-team suite (2026-07-13)
+
+Earned the trust-boundary claim with attacks, not assertions. `eval/redteam.py`
+(`chief eval --redteam`, exits 1 on any breach) runs 16 hostile payloads across 5
+categories — guard bypass, persuasion-ignored, malformed payloads, executor
+shell-escape (§13), terminal-escape — all contained, offline and deterministic.
+Writing it surfaced and closed two real gaps: terminal delivery rendered
+untrusted summaries with rich markup enabled and passed raw ANSI (fixed:
+`delivery.base.strip_control` + `rich.text.Text` in the terminal channel), and
+`/v1/events` let a hostile/oversized field escape as an unhandled 500 (fixed: a
+`ValidationError`→422 handler in `ingest/http.py`). 12 tests (harness + HTTP
+413/401/422 + terminal rendering); write-up in `docs/security/red-team.md`.
+370 tests.
