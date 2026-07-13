@@ -6,7 +6,18 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-07-13
+
 ### Added
+- **Calibration eval** (`chief eval --calibration`): measures whether the routing
+  score is a *trustworthy* decision variable, on the cohort's held-out stream (the
+  one offline classifier that makes real errors). Headline: the raw salience score
+  ranks **backwards** (AUC 0.368 — loud topics are the unwanted ones) and
+  preference learning **inverts it to AUC 0.918**. Reliability is monotone; a
+  parameter-free isotonic recalibration cuts ECE **0.263 → 0.011**; per-scene
+  thresholds are shown to trade recall for precision as the bar rises (idle 83%
+  recall → meeting 51%, precision ≥94% throughout). Writes
+  `eval/reports/calibration.md`; write-up in `docs/eval/calibration.md`. 9 tests.
 - **Ablation eval** (`chief eval --ablation`): turns each funnel stage off on the
   golden 200 and measures the accuracy **and** cost delta, so the three-stage
   architecture (SPEC §4.4) is proven load-bearing rather than asserted. Stage-1

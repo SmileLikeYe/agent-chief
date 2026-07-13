@@ -22,6 +22,7 @@ uv run chief connect composio --secret …   # + github / rss; chief sources
 uv run chief eval --learning      # preference-learning reward-loop eval
 uv run chief eval --cohort        # 100-user cohort benchmark (eval/personas.jsonl)
 uv run chief eval --ablation      # per-stage ablation on the golden set (accuracy + cost)
+uv run chief eval --calibration   # routing-score discrimination (AUC) + calibration (ECE)
 ```
 
 Published on PyPI: `uvx agent-chief demo` / `pip install agent-chief`.

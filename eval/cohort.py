@@ -78,6 +78,9 @@ class PersonaResult:
     f1_after: float
     precision_after: float
     recall_after: float
+    # held-out (routing score, wanted?) pairs — reused by the calibration eval
+    eval_scores_before: list[tuple[float, bool]] = field(default_factory=list)
+    eval_scores_after: list[tuple[float, bool]] = field(default_factory=list)
 
     @property
     def baseline(self) -> float:
@@ -144,21 +147,24 @@ class CohortReport:
 
 
 def _f1(events: list[tuple[str, float]], wants: set[str], scene: SceneState,
-        weights_by_topic) -> tuple[float, float, float]:
-    """Interrupt precision/recall/F1 over a held-out event stream."""
+        weights_by_topic) -> tuple[float, float, float, list[tuple[float, bool]]]:
+    """Interrupt precision/recall/F1 over a held-out event stream, plus the raw
+    (routing score, wanted) pairs — the substrate the calibration eval reuses."""
     tp = fp = fn = 0
+    pairs: list[tuple[float, bool]] = []
     for topic, strength in events:
         w = weights_by_topic(topic)
-        route, *_ = score_and_route(_result(strength), scene, topic_weights=w)
+        route, score, *_ = score_and_route(_result(strength), scene, topic_weights=w)
         predicted = route == "interrupt"
         wanted = topic in wants
+        pairs.append((score, wanted))
         tp += predicted and wanted
         fp += predicted and not wanted
         fn += (not predicted) and wanted
     precision = tp / (tp + fp) if (tp + fp) else 1.0
     recall = tp / (tp + fn) if (tp + fn) else 1.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
-    return precision, recall, f1
+    return precision, recall, f1, pairs
 
 
 async def _run_persona(st: State, persona: dict, topics, strength, threshold,
@@ -225,8 +231,8 @@ async def _run_persona(st: State, persona: dict, topics, strength, threshold,
         return dict(DEFAULT_WEIGHTS)
 
     learned = {t: await weights_for(t) for t in topics}
-    _, _, f1_before = _f1(stream, wants, scene, uniform_w)
-    p_after, r_after, f1_after = _f1(stream, wants, scene, lambda t: learned[t])
+    _, _, f1_before, scores_before = _f1(stream, wants, scene, uniform_w)
+    p_after, r_after, f1_after, scores_after = _f1(stream, wants, scene, lambda t: learned[t])
 
     unreachable = sum(1 for t in wants if not reachable(strength[t], thr))
     converged = next((r for r, v in enumerate(curve) if v >= 0.95), None)
@@ -235,7 +241,8 @@ async def _run_persona(st: State, persona: dict, topics, strength, threshold,
         noise=noise, curve=curve, converged_round=converged,
         n_wanted=len(wants), n_unreachable=unreachable,
         f1_before=f1_before, f1_after=f1_after,
-        precision_after=p_after, recall_after=r_after)
+        precision_after=p_after, recall_after=r_after,
+        eval_scores_before=scores_before, eval_scores_after=scores_after)
 
 
 async def run_cohort(rounds: int = TRAIN_ROUNDS,

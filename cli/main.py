@@ -53,6 +53,9 @@ def eval_cmd(
     ablation: bool = typer.Option(
         False, "--ablation", help="Ablate each funnel stage on the golden set (accuracy + cost)."
     ),
+    calibration: bool = typer.Option(
+        False, "--calibration", help="Score discrimination (AUC) + calibration (ECE) on the cohort."
+    ),
 ):
     """Run REGRESSION (demo 24, must be 100%) + CAPABILITY (golden ~200) evals."""
     from rich.console import Console
@@ -68,6 +71,27 @@ def eval_cmd(
     )
 
     console = Console()
+
+    if calibration:
+        import asyncio
+
+        from eval.calibration import render_markdown as render_calibration
+        from eval.calibration import run_calibration
+
+        if compare[0] or backend != "fixtures":
+            console.print(
+                "[yellow]note[/yellow]: --calibration ignores --compare/--backend "
+                "(it scores the offline cohort's held-out stream)"
+            )
+        report = asyncio.run(run_calibration())
+        path = _writable_dir(out or REPORTS_DIR) / "calibration.md"
+        path.write_text(render_calibration(report), encoding="utf-8")
+        console.print(
+            f"[green]calibration[/green] AUC {report.auc_before:.2f} → "
+            f"{report.auc_after:.2f} · ECE {report.ece_raw:.2f} → "
+            f"{report.ece_isotonic:.2f} (isotonic) → {path}"
+        )
+        return
 
     if ablation:
         import asyncio

@@ -110,3 +110,18 @@ discretion). Stage-2's similarity cache is measured on repeat traffic — its re
 job — erasing all 141 judge calls on identical replay (199/200 routing
 preserved). 9 tests pin the numbers and stage contracts; write-up in
 `docs/eval/ablation.md`. 350 tests.
+
+## Step 40 — calibration eval (2026-07-13)
+
+Proved the single number Chief routes on is trustworthy. `eval/calibration.py`
+(`chief eval --calibration`) is a view over the cohort's held-out stream — the
+one offline classifier that makes real errors — so ~7.2k (score, wanted) pairs
+with genuine mistakes are available. Headline: the raw salience score is
+*anti*-correlated with preference (AUC 0.368, below chance — loud newsletters
+unwanted, quiet incidents wanted) and learning *inverts* it to AUC 0.918.
+Reliability is monotone; a parameter-free isotonic recalibration (fit on half,
+scored on the held-out half) cuts ECE 0.263 → 0.011. Per-scene thresholds are
+shown to be deliberate operating points (idle 83% recall → meeting 51%, precision
+≥94% throughout). PersonaResult gained additive eval_scores_before/after so
+cohort's pinned numbers are untouched. 9 tests; write-up in
+`docs/eval/calibration.md`. 359 tests.
