@@ -1,7 +1,6 @@
 """Implements SPEC §4.1: MCP server (fastmcp) — tools propose, feedback,
 digest, policy, stats. Downstream agents call propose and obey the Decision."""
 
-from datetime import UTC, datetime
 from pathlib import Path
 
 from fastmcp import FastMCP
@@ -27,7 +26,7 @@ def create_mcp(brain: Brain) -> FastMCP:
         dismissed_fast / muted / task_ok / task_fail."""
         try:
             learned = await apply_feedback(
-                brain.state, event_id, signal, datetime.now(UTC),
+                brain.state, event_id, signal, brain.now_fn(),
                 classifier=brain.classifier,
             )
         except ValueError as exc:
@@ -52,7 +51,9 @@ def create_mcp(brain: Brain) -> FastMCP:
     @mcp.tool
     async def stats(days: int = 7) -> dict:
         """Tact-report numbers for the last N days."""
-        report = await build_tact_report(brain.state, days=days, now=datetime.now(UTC))
+        # window off the brain's clock, not wall-clock, so the N-day view is
+        # consistent with the timestamps the pipeline stamped (matches /api/overview)
+        report = await build_tact_report(brain.state, days=days, now=brain.now_fn())
         return {
             "days": report.days,
             "events_in": report.events_in,
