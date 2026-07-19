@@ -126,11 +126,12 @@ async def tick_jobs(
         await deliver(msg, "desktop", "idle", channels)
     if hm == "03:00" and (day, "distill") not in fired:
         fired.add((day, "distill"))
-        from core.learner import daily_threshold_tuning
+        from core.learner import daily_threshold_tuning, prune_stale_pins
 
         await distill(state, policy_file, now=now)
         await memory.expire(now=now)
         await daily_threshold_tuning(state, now=now)
+        await prune_stale_pins(state, now=now)
 
 
 async def scheduler_loop(state, memory, policy_file, channels, digest_times) -> None:

@@ -2,7 +2,7 @@
 
 import json
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -269,16 +269,63 @@ class State:
 
     # learned interrupt pins (SPEC §4.6): when EMA saturates but the user keeps
     # correcting a topic to "should interrupt", escalate to a hard per-topic rule.
+    # A pin is a small record {"pinned_at", "last_fired"} — last_fired lets stale
+    # pins decay so the meta blob can't grow without bound (v3, pin lifecycle).
     _PINS_KEY = "learned_pins"
+
+    @staticmethod
+    def _pin_entry(value: Any) -> dict:
+        """Normalize a stored pin. v2 wrote a bare ISO string; v3 writes a dict.
+        Reading tolerates both so an upgrade never loses a pin."""
+        if isinstance(value, str):  # legacy v2 format
+            return {"pinned_at": value, "last_fired": value}
+        return {"pinned_at": value.get("pinned_at"), "last_fired": value.get("last_fired")}
 
     async def add_pin(self, topic: str, at: datetime) -> None:
         pins = await self.get_meta(self._PINS_KEY) or {}
-        pins.setdefault(topic, at.isoformat())
-        await self.set_meta(self._PINS_KEY, pins)
+        if topic not in pins:  # re-pinning must not reset the freshness clock
+            pins[topic] = {"pinned_at": at.isoformat(), "last_fired": at.isoformat()}
+            await self.set_meta(self._PINS_KEY, pins)
 
     async def is_pinned(self, topic: str) -> bool:
         pins = await self.get_meta(self._PINS_KEY) or {}
         return topic in pins
+
+    async def remove_pin(self, topic: str) -> bool:
+        """Drop a pin (an explicit should-not-interrupt, or staleness). Returns
+        True iff a pin was actually removed."""
+        pins = await self.get_meta(self._PINS_KEY) or {}
+        if topic not in pins:
+            return False
+        del pins[topic]
+        await self.set_meta(self._PINS_KEY, pins)
+        return True
+
+    async def touch_pin(self, topic: str, at: datetime) -> None:
+        """Record that a pin just fired, so an actively-used pin never goes stale."""
+        pins = await self.get_meta(self._PINS_KEY) or {}
+        if topic not in pins:
+            return
+        entry = self._pin_entry(pins[topic])
+        entry["last_fired"] = at.isoformat()
+        pins[topic] = entry
+        await self.set_meta(self._PINS_KEY, pins)
+
+    async def prune_stale_pins(self, *, now: datetime, max_idle_days: int) -> list[str]:
+        """Remove pins whose last fire is older than max_idle_days. Returns the
+        topics dropped (for logging). A pin only survives while it stays useful."""
+        pins = await self.get_meta(self._PINS_KEY) or {}
+        cutoff = now - timedelta(days=max_idle_days)
+        stale = [
+            topic
+            for topic, value in pins.items()
+            if datetime.fromisoformat(self._pin_entry(value)["last_fired"]) < cutoff
+        ]
+        if stale:
+            for topic in stale:
+                del pins[topic]
+            await self.set_meta(self._PINS_KEY, pins)
+        return stale
 
     async def learned_pins(self) -> dict:
         return await self.get_meta(self._PINS_KEY) or {}

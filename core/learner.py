@@ -54,6 +54,13 @@ PROPENSITY_ALPHA = 0.2
 # weight update has all but stopped moving, EMA has demonstrably run out of room
 # — escalate to a hard per-topic pin instead of nudging forever.
 PIN_CONVERGENCE_EPS = 0.01
+# A pin is a hard, content-blind override that fires on *every* event of its
+# topic, so an explicit `should_not_interrupt` on a pinned topic is a direct
+# contradiction of the pin's whole reason to exist — remove it at once (unlike
+# creation, which must overcome EMA inertia, removal of an explicit pin on an
+# explicit counter-signal is safe). And a pin no event has re-fired in this many
+# days has outlived its usefulness → the nightly job prunes it.
+PIN_STALE_DAYS = 30
 
 
 def tune_adjust(adjust: float, dismissed_fast_ratio: float) -> float:
@@ -139,6 +146,12 @@ class Learner:
                 and not await self.state.is_pinned(event.topic)
             ):
                 await self.state.add_pin(event.topic, at)
+            # de-escalation: the user is explicitly telling a pinned topic to stop
+            # interrupting — honour it immediately ("stop flagging this"). The pin
+            # forced the interrupt they just rejected, so one counter-signal is
+            # enough; the decayed weights below keep it from re-pinning by accident.
+            elif signal == "should_not_interrupt":
+                await self.state.remove_pin(event.topic)
 
         if signal == "promote":
             weights = await self.topic_weights(event.topic)
@@ -181,6 +194,12 @@ async def daily_threshold_tuning(state: State, *, now: datetime) -> float:
         adjust = tune_adjust(adjust, dismissed / interrupts)
         await state.set_topic_weights(THRESHOLD_KEY, {"adjust": adjust})
     return adjust
+
+
+async def prune_stale_pins(state: State, *, now: datetime) -> list[str]:
+    """Nightly: drop learned pins no event has re-fired in PIN_STALE_DAYS, so the
+    pin set stays a live reflection of what the user still wants flagged."""
+    return await state.prune_stale_pins(now=now, max_idle_days=PIN_STALE_DAYS)
 
 
 # --- shadow mode (SPEC §4.6) ---

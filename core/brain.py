@@ -171,6 +171,7 @@ class Brain:
         elif await self.state.is_pinned(event.topic):
             # learned pin (SPEC §4.6): repeated should-interrupt corrections that
             # EMA weights couldn't satisfy → a hard interrupt rule, no judge call.
+            await self.state.touch_pin(event.topic, now)  # keep an active pin fresh
             clock.mark("stage1", note="learned pin fired")
             decision = Decision(
                 event_id=event.id,

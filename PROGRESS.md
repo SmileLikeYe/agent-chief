@@ -155,3 +155,17 @@ convergence 64% → 95% (31/36 structurally-capped users rescued, held-out F1
 noise-limited, not arithmetic. `run_cohort(pins=False)` reproduces the EMA-only
 baseline; calibration runs pins=False to stay decoupled. Surfaced in
 `/api/learning`. 3 new pin tests + updated cohort tests. 374 tests.
+
+## Step 43 — pin lifecycle: un-pinning + decay (2026-07-19)
+
+Made learned pins two-directional and self-maintaining, closing the write-only
+gap from Step 42. An explicit `should_not_interrupt` on a pinned topic now removes
+the pin on the first signal (`core.learner` → `State.remove_pin`) — responsive by
+design, since a pin forces an interrupt on every event of its topic; a soft
+`dismissed_fast` still only decays weights and never tears down a hard pin.
+Creation stays saturation-gated (asymmetric on purpose: a single loud event can't
+mint a pin). Decay: each firing refreshes `last_fired` (`core.brain` →
+`State.touch_pin`) and the 03:00 job prunes pins idle > `PIN_STALE_DAYS` (30,
+`core.learner.prune_stale_pins`), so the meta blob can't grow unbounded. Pin
+records upgraded bare-ISO-string → `{pinned_at, last_fired}`; reads normalise via
+`State._pin_entry` so v2 pins survive the upgrade. 5 new pin tests. 379 tests.

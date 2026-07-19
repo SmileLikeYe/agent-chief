@@ -113,6 +113,27 @@ with the noisiest feedback they never send enough consistent corrections to trip
 the pin inside the training window. The ceiling that remains is **noise-limited,
 not arithmetic** — the exact, checkable shape you'd want a real system to have.
 
+### Pins can also be *removed* (v3 — lifecycle)
+
+A pin the user regrets, or that a preference change makes obsolete, must not be a
+one-way ratchet. So the escalation is symmetric where it needs to be and
+responsive where it should be:
+
+- **Un-pin on demand.** An explicit `should_not_interrupt` on a pinned topic
+  removes the pin on the **first** signal — the *"stop flagging this"* move. It's
+  responsive by design: a pin forces an interrupt on *every* event of its topic,
+  so the correction directly contradicts the pin's whole reason to exist. (A soft
+  `dismissed_fast` still only decays weights — it never tears down a hard pin.)
+- **Decay.** Each firing refreshes a `last_fired` clock; the nightly job prunes any
+  pin unused for `PIN_STALE_DAYS` (30). A pin survives exactly as long as it stays
+  useful, so the learned-pin set can't grow without bound and always mirrors what
+  the user still wants flagged.
+
+Creation stays asymmetric on purpose — it must *saturate* (repeated corrections
+until the weight step stalls) to overcome EMA inertia, so a single loud event can
+never mint a pin; removal of an already-explicit pin on an already-explicit
+counter-signal is safe to do at once.
+
 ## Feedback noise, by tier
 
 | tier | noise | users | converged | F1 after |

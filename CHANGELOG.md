@@ -6,6 +6,19 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Pin lifecycle** (SPEC §4.6, cohort-v3): learned interrupt pins are no longer
+  write-only. An explicit `should_not_interrupt` on a pinned topic now **removes
+  the pin immediately** ("stop flagging this") — symmetric to the
+  saturation-driven escalation that created it, but responsive, since a pin
+  forces an interrupt on *every* event of its topic. Pins also **decay**: each
+  firing refreshes a `last_fired` clock (`State.touch_pin`), and the nightly job
+  prunes any pin unused for `PIN_STALE_DAYS` (30), so the pin set can't grow
+  unbounded and always reflects what the user still wants flagged. Pin records
+  upgraded from a bare timestamp to `{pinned_at, last_fired}`; reads tolerate the
+  legacy v2 string format so no pin is lost on upgrade. New `State.remove_pin` /
+  `touch_pin` / `prune_stale_pins` + `core.learner.prune_stale_pins`. 5 tests.
+
 ## [0.5.0] — 2026-07-13
 
 ### Added
