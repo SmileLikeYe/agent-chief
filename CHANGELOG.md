@@ -6,6 +6,8 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-07-19
+
 ### Added
 - **Pin lifecycle** (SPEC §4.6, cohort-v3): learned interrupt pins are no longer
   write-only. An explicit `should_not_interrupt` on a pinned topic now **removes
@@ -18,6 +20,14 @@ All notable changes to Chief are documented here. The format follows
   upgraded from a bare timestamp to `{pinned_at, last_fired}`; reads tolerate the
   legacy v2 string format so no pin is lost on upgrade. New `State.remove_pin` /
   `touch_pin` / `prune_stale_pins` + `core.learner.prune_stale_pins`. 5 tests.
+- **Preference-drift eval** (`chief eval --drift`): flips every cohort user's
+  preferences mid-stream and scores held-out interrupt F1 against the *current*
+  truth — **0.86 (learned) → 0.69 (the instant it flips) → 0.88 (re-learned)**,
+  91% of users recovering to within 0.05 of pre-drift quality. The subplot proves
+  un-pinning at scale: of the 30 users whose dropped topic had been pinned, **100%
+  had that pin removed**, so an over-learned interrupt never outlives the
+  preference that created it. Writes `eval/reports/drift.md`; write-up in
+  `docs/eval/drift.md`. 3 tests.
 
 ## [0.5.0] — 2026-07-13
 
@@ -207,6 +217,8 @@ Initial release: the full SPEC v3 implementation (Steps 1–24).
 - Fully offline deterministic demo (`uvx agent-chief demo`) with a
   full-table routing regression.
 
+[0.6.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/SmileLikeYe/agent-chief/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.2.0...v0.3.0

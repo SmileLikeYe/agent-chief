@@ -192,6 +192,7 @@ run yourself — no keys, no network. Claims that can't be measured don't ship.
 | **Capability** | agreement on a **200-case golden dataset** whose labels are verified against the real pipeline | `chief eval` |
 | **Reward loop** | ±1 feedback trains the policy — one user, 0% → 100% in 2 rounds | `chief eval --learning` |
 | **Cohort benchmark** | it generalizes to **100 users**: **95% converge** (learned pins break the EMA ceiling), held-out interrupt **F1 0.10 → 0.87** | `chief eval --cohort` |
+| **Preference drift** | preferences *move* and Chief tracks them: held-out F1 **0.86 → 0.69 → 0.88** across a mid-stream flip, and **100% of stale pins are dropped** | `chief eval --drift` |
 | **Ablation** | each funnel stage is *load-bearing*: hard rules save **+42% of judge calls & +20 pp**; the judge adds **+38.5 pp** over the rules-only floor | `chief eval --ablation` |
 | **Calibration** | the score you route on is trustworthy: raw salience ranks **backwards** (AUC 0.368), learning **inverts it to 0.918**; isotonic cuts ECE **0.263 → 0.011** | `chief eval --calibration` |
 | **Red-team** | **16/16 hostile payloads contained** — injection can't force an interrupt, malformed input fails closed, the executor stays argv-only (§13) | `chief eval --redteam` |

@@ -56,6 +56,9 @@ def eval_cmd(
     calibration: bool = typer.Option(
         False, "--calibration", help="Score discrimination (AUC) + calibration (ECE) on the cohort."
     ),
+    drift: bool = typer.Option(
+        False, "--drift", help="Preference-drift benchmark: track a moving target + un-pin."
+    ),
     redteam: bool = typer.Option(
         False, "--redteam", help="Run the adversarial red-team suite (injection / payloads / §13)."
     ),
@@ -150,6 +153,28 @@ def eval_cmd(
             f"[green]cohort[/green] {report.converged_frac:.0%} of {report.n} users "
             f"converge · held-out interrupt F1 {report.f1_before:.2f} → "
             f"{report.f1_after:.2f} → {path}"
+        )
+        return
+
+    if drift:
+        import asyncio
+
+        from eval.drift import render_markdown as render_drift
+        from eval.drift import run_drift
+
+        if compare[0] or backend != "fixtures":
+            console.print(
+                "[yellow]note[/yellow]: --drift ignores --compare/--backend "
+                "(the reward loop uses the built-in scorer, not an LLM judge)"
+            )
+        report = asyncio.run(run_drift())
+        path = _writable_dir(out or REPORTS_DIR) / "drift.md"
+        path.write_text(render_drift(report), encoding="utf-8")
+        console.print(
+            f"[green]drift[/green] held-out F1 {report.f1_before_drift:.2f} → "
+            f"{report.f1_at_drift:.2f} (flip) → {report.f1_after_drift:.2f} · "
+            f"{report.unpin_frac:.0%} of {len(report.pinned_on_dropped)} stale pins "
+            f"removed → {path}"
         )
         return
 

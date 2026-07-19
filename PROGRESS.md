@@ -168,4 +168,12 @@ mint a pin). Decay: each firing refreshes `last_fired` (`core.brain` →
 `State.touch_pin`) and the 03:00 job prunes pins idle > `PIN_STALE_DAYS` (30,
 `core.learner.prune_stale_pins`), so the meta blob can't grow unbounded. Pin
 records upgraded bare-ISO-string → `{pinned_at, last_fired}`; reads normalise via
-`State._pin_entry` so v2 pins survive the upgrade. 5 new pin tests. 379 tests.
+`State._pin_entry` so v2 pins survive the upgrade. 5 new pin tests.
+
+Evaluated, not asserted: a new **preference-drift benchmark** (`eval/drift.py`,
+`chief eval --drift`) flips every cohort user's preferences mid-stream and scores
+held-out interrupt F1 against the *current* truth — 0.86 (learned) → 0.69 (the
+instant it flips) → 0.88 (re-learned), 91% recovering to within 0.05 of pre-drift.
+The subplot proves un-pinning at scale: of the 30 users whose dropped topic had
+been pinned, 100% had that pin removed. Reuses the cohort personas + production
+primitives; deterministic/offline. 3 tests; write-up `docs/eval/drift.md`. 382 tests.
