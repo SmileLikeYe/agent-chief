@@ -152,26 +152,30 @@ quality is scored on a **held-out** event stream they never trained on.
 
 ```console
 $ chief eval --cohort
-cohort 64% of 100 users converge · held-out interrupt F1 0.10 → 0.81
+cohort 95% of 100 users converge · held-out interrupt F1 0.10 → 0.87
 
-rounds to ≥95% (of the 64)      held-out interrupt F1 (mean)
-  1–2 |████████████████| 24      before  0.10 |██              |
-  3–4 |███████████████ | 23      after   0.81 |████████████████|
-  5+  |███████████     | 17
+EMA weights alone   64% |███████████     |   ← ceilings, provably
++ learned pins      95% |████████████████|   ← breaks the ceiling
+held-out F1 (mean)  0.10 → 0.87
 ```
 
-The other 36% who *don't* converge aren't a mystery the benchmark hides — they
-are **provably** the users with a wanted-but-too-quiet topic that bounded
-weights can't lift over their scene's bar (a topic of strength `s` peaks at
-`5s²`, so it clears threshold `T` only when `s ≥ √(T/5)`). A user converges
-**iff** every wanted topic is reachable, so `converged ∪ ceiling-capped ==
-everyone` — an invariant a test enforces. Full derivation and three worked
-users: **[docs/eval/cohort-benchmark.md](docs/eval/cohort-benchmark.md)**.
+With EMA weights alone, only **64%** converge — and the other 36% aren't a
+mystery the benchmark hides: they are **provably** the users with a
+wanted-but-too-quiet topic that bounded weights can't lift over their scene's bar
+(a topic of strength `s` peaks at `5s²`, so it clears threshold `T` only when
+`s ≥ √(T/5)`). Rather than nudge weights forever at a topic they can't reach,
+Chief **escalates to a hard per-topic pin** once the correction keeps coming but
+the weight step has stopped moving — the *"you've told me six times, I'll just
+always flag this"* move. That rescues 31 of the 36 capped users, lifting
+convergence to **95%**; the 5 who remain are all the noisiest-feedback users, so
+the residual ceiling is **noise-limited, not arithmetic**. Full derivation and
+three worked users: **[docs/eval/cohort-benchmark.md](docs/eval/cohort-benchmark.md)**.
 
 > **Why this matters:** most "it learns your preferences" claims are an
-> unfalsifiable demo. This one ships the population distribution *and* the exact
-> boundary where feedback stops working — being able to name where your system
-> fails is more convincing than claiming it never does.
+> unfalsifiable demo. This one ships the population distribution, the exact
+> boundary where nudging weights stops working, *and* the escalation that breaks
+> it — being able to name where your system fails is more convincing than
+> claiming it never does.
 
 > 📝 The engineering story behind Chief — the funnel, per-model cost accounting,
 > and the falsifiable learning loop — is written up in
@@ -187,12 +191,15 @@ run yourself — no keys, no network. Claims that can't be measured don't ship.
 | **Routing regression** | the demo's 24 events route *exactly* as pinned — CI-gated at 100%, forever | `chief eval` |
 | **Capability** | agreement on a **200-case golden dataset** whose labels are verified against the real pipeline | `chief eval` |
 | **Reward loop** | ±1 feedback trains the policy — one user, 0% → 100% in 2 rounds | `chief eval --learning` |
-| **Cohort benchmark** | it generalizes to **100 users**: 64% converge, held-out interrupt **F1 0.10 → 0.81**, with a *provable* ceiling | `chief eval --cohort` |
+| **Cohort benchmark** | it generalizes to **100 users**: **95% converge** (learned pins break the EMA ceiling), held-out interrupt **F1 0.10 → 0.87** | `chief eval --cohort` |
+| **Ablation** | each funnel stage is *load-bearing*: hard rules save **+42% of judge calls & +20 pp**; the judge adds **+38.5 pp** over the rules-only floor | `chief eval --ablation` |
+| **Calibration** | the score you route on is trustworthy: raw salience ranks **backwards** (AUC 0.368), learning **inverts it to 0.918**; isotonic cuts ECE **0.263 → 0.011** | `chief eval --calibration` |
+| **Red-team** | **16/16 hostile payloads contained** — injection can't force an interrupt, malformed input fails closed, the executor stays argv-only (§13) | `chief eval --redteam` |
 | **Cost accounting** | per-model, cache-aware USD on every decision — this caught a **17× mispricing** bug | `chief trace <id>` |
 | **Graceful degradation** | judge offline → rules-only conservative routing, never interrupts blind, auto-heals | chaos-injection tests |
 | **Prompt governance** | no prompt change merges without an eval diff on the golden set | `chief eval --compare v1 v2` |
 
-**341 tests, fully offline.** The demo routing table is a full-table
+**374 tests, fully offline.** The demo routing table is a full-table
 regression — every event's route is pinned, so a behavior change can never slip
 through silently.
 
