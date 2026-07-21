@@ -6,6 +6,37 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-07-21
+
+### Added
+- **The push pipe** (SPEC §4.1, generalized): both ends of Chief-as-attention-router
+  are now first-class, with no new endpoint and no new external dependency.
+  - **Inbound as a one-liner**: `chief push "CI failed on main" --topic dev.ci
+    --urgency high` (or `… | chief push` with full event JSON on stdin) is
+    `POST /v1/events` as a CLI — any skill, script, or cron job pushes attention
+    to the running daemon and gets back the one-line verdict
+    (`interrupt · deep_work · score 4.2 — …`; `--json` for the full Decision).
+    The minimal contract is `ingest.push.push_payload` — just `{source, summary}`,
+    validated at the edge: empty summary / unknown urgency fail fast with a human
+    error, summaries collapse to one line and clamp to the schema limit.
+  - **Telegram is now a two-way pipe**: a message *to* the bot becomes a candidate
+    event (the off-box inbound path for anything that can't reach `127.0.0.1`),
+    and the bot replies with the decision — phone → Chief → phone. Accepted
+    **only** from the configured `chat_id`; a stranger's message is dropped
+    before ingest. Long/multiline messages keep their full text in `detail`.
+  - Docs: `docs/protocol.md` §1b/§1c.
+
+### Fixed
+- The Telegram poll task now **outlives the network**: getUpdates failures
+  (5xx/timeout/bad body) retry with capped exponential backoff (1s→60s) instead
+  of silently killing the daemon's only phone pipe — a latent single point of
+  death that predates this release (feedback buttons died with it too).
+- A poison update costs exactly itself: the offset advances past the whole batch
+  before handling, and a failing update is logged and skipped — never the rest
+  of the batch, never the loop, never a redelivery storm.
+- The decision-echo reply is best-effort: once the pipeline has decided and
+  persisted, a failed send is logged, never propagated.
+
 ## [0.6.0] — 2026-07-19
 
 ### Added
@@ -217,6 +248,7 @@ Initial release: the full SPEC v3 implementation (Steps 1–24).
 - Fully offline deterministic demo (`uvx agent-chief demo`) with a
   full-table routing regression.
 
+[0.7.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.3.1...v0.4.0
