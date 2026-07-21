@@ -162,3 +162,61 @@ connector registry documents open slots for zapier/n8n and MCP-push agents.
    way to teach Chief's learner to discount your topic.
 4. **Fill `suggested_action` and `evidence`.** Actionability and verifiable
    evidence are two of the five scoring dimensions — they are how good events win.
+
+## 4. Outbound — receive deliveries anywhere
+
+The exit is a protocol too. Configure one receiver URL and Chief POSTs every
+delivered event to it — anything that can accept an HTTP POST (a phone-app
+bridge, an ntfy relay you host, a desktop applet, a home-automation hub)
+becomes a delivery channel by implementing this one contract:
+
+```
+chief connect webhook --url https://your-receiver/hook --secret <random>
+```
+
+### What arrives
+
+```
+POST <your url>
+content-type: application/json
+chief-timestamp: <unix seconds>            (only when a secret is set)
+chief-signature: v1,<base64 hmac>          (only when a secret is set)
+
+{"event_id": "evt_20260721_1512_ab3f",
+ "topic": "dev.incident",
+ "summary": "checkout 500s spiking on prod",
+ "plan": "Rollback prepared: `deploy revert 4a1c`",   // null unless dispatched
+ "level": "ring",
+ "sent_at": 1784718720.5}
+```
+
+`level` is Chief's scene-capped noise decision (`terminal < desktop < silent <
+vibrate < ring`) — your receiver maps it to however it makes noise. `--max-level`
+caps what Chief will ask of this receiver.
+
+### Verify the signature (do this)
+
+Same svix-style scheme as the Composio inbound connector — HMAC-SHA256 over
+`"{event_id}.{timestamp}." + raw body`, base64, `v1,` prefix:
+
+```python
+import base64, hashlib, hmac
+
+def verify(secret: str, event_id: str, timestamp: str, body: bytes, header: str) -> bool:
+    mac = hmac.new(secret.encode(), f"{event_id}.{timestamp}.".encode() + body,
+                   hashlib.sha256).digest()
+    return hmac.compare_digest(header.removeprefix("v1,"), base64.b64encode(mac).decode())
+```
+
+Without a secret the POST is unsigned and your receiver can't tell Chief from
+anyone who found its URL — set one.
+
+### Honest semantics
+
+- Chief picks **one** channel per delivery (the weakest that can express the
+  level); the webhook competes with terminal/desktop/Telegram by `--max-level`.
+- Failures are retried 3× with backoff, then **logged and lost** — there is no
+  outbound queue. A receiver that must not miss events should be highly
+  available or you should keep a second channel configured.
+- Feedback flows back through the normal surface: your receiver can POST
+  `/v1/feedback` with `{"event_id", "signal"}` (see §2b) to close the loop.

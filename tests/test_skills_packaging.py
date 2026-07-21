@@ -41,6 +41,14 @@ def test_claude_code_skill_documents_lite_mode():
     assert "drop" in text and "digest" in text  # explains obeying routes
 
 
+def test_claude_code_skill_prefers_the_running_daemon():
+    """Step 45: `chief push` (full pipeline: persistence, learning, delivery)
+    is the preferred transport; lite is the zero-daemon fallback."""
+    text = SKILLS["claude-code"].read_text(encoding="utf-8")
+    assert "chief push" in text
+    assert text.index("chief push") < text.index("chief lite")  # preferred comes first
+
+
 def test_manual_test_transcripts_documented():
     doc = (ROOT / "docs" / "skill-manual-tests.md").read_text(encoding="utf-8")
     for host in ("openclaw", "claude-code"):

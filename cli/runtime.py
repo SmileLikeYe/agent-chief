@@ -93,6 +93,15 @@ def make_channels(delivery_cfg: dict) -> list:
         from delivery.telegram import TelegramChannel
 
         channels.append(TelegramChannel(token=token, chat_id=str(delivery_cfg["chat_id"])))
+    webhook_cfg = delivery_cfg.get("webhook", {})
+    if webhook_cfg.get("url"):
+        from delivery.webhook import WebhookChannel
+
+        channels.append(WebhookChannel(
+            url=webhook_cfg["url"],
+            secret=webhook_cfg.get("secret"),
+            max_level=webhook_cfg.get("max_level", "ring"),
+        ))
     return channels
 
 

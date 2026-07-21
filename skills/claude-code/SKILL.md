@@ -11,9 +11,23 @@ as their chief of staff; going around it is a protocol violation.
 
 ## What to do instead
 
-Propose a candidate event and obey the Decision. Two transports:
+Propose a candidate event and obey the Decision. Three transports — prefer the
+first that works:
 
-### 1. `chief lite` — zero-daemon judgment (simplest)
+### 1. `chief push` — the running Chief (preferred)
+
+```bash
+chief push "CI failed on main: test_auth_flow broken by PR #482" \
+  --source claude-code-watcher --topic dev.ci --urgency high \
+  --action "revert #482 or fix the fixture"
+```
+
+One line in, one-line verdict out (`--json` for the full Decision). This is the
+full pipeline: the event is persisted, feedback can teach Chief about it later,
+and a worthy event is actually delivered (phone included). If it prints "can't
+reach chief", the daemon isn't running — fall through to `chief lite`.
+
+### 2. `chief lite` — zero-daemon judgment (fallback)
 
 ```bash
 chief lite '{
@@ -32,9 +46,9 @@ LLM backend configured it is deliberately conservative: rules still fire
 (noise still drops), everything else routes to `digest` with
 `"degraded": true`.
 
-### 2. Resident Chief (webhook or MCP)
+### 3. Raw transports (webhook or MCP)
 
-If `chief run` is resident: `POST http://localhost:8787/v1/events` with the
+If you can't shell out: `POST http://localhost:8787/v1/events` with the
 bearer token from `~/.chief/config.toml`, or the MCP tool `propose`
 (server: `python -m ingest.mcp_server`, stdio).
 

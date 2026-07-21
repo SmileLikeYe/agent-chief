@@ -208,3 +208,22 @@ original in `detail` — clamping is rendering, never data loss. CLI failure
 modes are all explicit: non-object stdin JSON, unreachable daemon (any
 transport error, not just refused), and 401 with a `chief token` hint. 8 new
 tests pin every one of these. 401 tests.
+
+## Step 45 — outbound protocol: any receiver becomes a channel (2026-07-21)
+
+Applied "protocol, not pipes" to the exit. Instead of growing an adapter per
+notification app, `delivery/webhook.py::WebhookChannel` POSTs one signed JSON
+shape — `{event_id, topic, summary, plan, level, sent_at}` — to a URL the user
+configures (`chief connect webhook --url … --secret …`, stored as
+`[delivery.webhook]`), so a phone-app bridge, a self-hosted ntfy relay, or a
+desktop applet becomes a delivery channel by implementing one receiver. The
+signature is the same svix scheme the Composio inbound connector verifies
+(a test round-trips `sign()` through the inbound `verify_signature` — one
+verify function, both directions). §13 unchanged: no team-chat adapters, no
+outbound queue pretending to exist (3 retries → raise → logged loss, docs say
+so). `--max-level` caps how loud Chief may ask the receiver to be; control
+characters are stripped before the wire. Inbound side: the claude-code skill
+now teaches `chief push` (full pipeline) before `chief lite` (zero-daemon
+fallback). 12 new tests (contract shape, signature symmetry, unsigned warning,
+retry/raise, config wiring, connect CLI, skill ordering); receiver contract
+documented in `docs/protocol.md §4`. 413 tests.

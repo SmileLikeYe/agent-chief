@@ -71,6 +71,43 @@ def connect_composio(secret: str) -> None:
     )
 
 
+def connect_webhook(url: str, secret: str | None = None, max_level: str = "ring") -> None:
+    """Outbound: register a delivery-webhook receiver (protocol, not pipes — §4.5)."""
+    from delivery.base import LEVELS
+
+    if not url.startswith(("http://", "https://")):
+        raise SystemExit(f"receiver url must be http(s), got {url!r}")
+    if max_level not in LEVELS:
+        raise SystemExit(f"max_level must be one of {'/'.join(LEVELS)}")
+
+    def mutate(cfg):
+        entry = {"url": url, "max_level": max_level}
+        if secret:
+            entry["secret"] = secret
+        cfg.setdefault("delivery", {})["webhook"] = entry
+
+    _update_config(mutate)
+
+    if secret:
+        # prove the signer + the documented verifier agree before the user leaves
+        from delivery.webhook import sign
+        from ingest.connectors.composio import verify_signature
+
+        body = json.dumps({"probe": True}).encode()
+        assert verify_signature(secret, "evt_probe", "0", body,
+                                sign(secret, "evt_probe", "0", body))
+        console.print("✅ receiver stored · signed sample verified locally")
+    else:
+        console.print(
+            "✅ receiver stored — [yellow]unsigned[/yellow]: without --secret your "
+            "receiver can't tell Chief from anyone who found its URL"
+        )
+    console.print(
+        f"\nChief will POST deliveries to [bold]{url}[/bold] (up to level {max_level}).\n"
+        f"Receiver contract + signature verification: docs/protocol.md §4"
+    )
+
+
 def connect_github() -> None:
     import shutil
 

@@ -20,6 +20,7 @@ uv run chief lite '<event json>'  # zero-daemon judgment (skills use this)
 uv run chief push '<summary>' --topic t --urgency high  # push attention to the running daemon
 uv run chief ui                   # local web console at 127.0.0.1:8787/ui
 uv run chief connect composio --secret …   # + github / rss; chief sources
+uv run chief connect webhook --url … --secret …  # outbound: deliveries → your receiver
 uv run chief eval --learning      # preference-learning reward-loop eval
 uv run chief eval --cohort        # 100-user cohort benchmark w/ learned pins (eval/personas.jsonl)
 uv run chief eval --drift         # preference-drift benchmark: track a moving target + un-pin

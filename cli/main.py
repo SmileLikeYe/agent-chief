@@ -492,11 +492,14 @@ def digest(now: bool = typer.Option(False, "--now", help="Send the digest immedi
 
 @app.command()
 def connect(
-    source: str = typer.Argument(..., help="composio | github | rss"),
-    secret: str = typer.Option(None, "--secret", help="Composio webhook secret (whsec_…)."),
-    url: str = typer.Option(None, "--url", help="RSS feed url."),
+    source: str = typer.Argument(..., help="composio | github | rss | webhook (outbound)"),
+    secret: str = typer.Option(None, "--secret", help="HMAC secret (composio / webhook)."),
+    url: str = typer.Option(None, "--url", help="RSS feed url, or webhook receiver url."),
+    max_level: str = typer.Option(
+        "ring", "--max-level", help="webhook only: loudest level the receiver handles."
+    ),
 ):
-    """One-click source connection (SPEC v3.2 Step 35)."""
+    """One-click connection: sources in (SPEC v3.2 Step 35), receivers out (Step 45)."""
     from cli import connect as c
 
     if source == "composio":
@@ -511,8 +514,13 @@ def connect(
             typer.echo("need --url https://…")
             raise typer.Exit(code=2)
         c.connect_rss(url)
+    elif source == "webhook":
+        if not url:
+            typer.echo("need --url https://… (your receiver; docs/protocol.md §4)")
+            raise typer.Exit(code=2)
+        c.connect_webhook(url, secret=secret, max_level=max_level)
     else:
-        typer.echo(f"unknown source {source!r} — try: composio, github, rss "
+        typer.echo(f"unknown source {source!r} — try: composio, github, rss, webhook "
                    "(or POST /v1/events directly, docs/protocol.md)")
         raise typer.Exit(code=2)
 
