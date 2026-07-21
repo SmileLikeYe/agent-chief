@@ -177,3 +177,21 @@ instant it flips) → 0.88 (re-learned), 91% recovering to within 0.05 of pre-dr
 The subplot proves un-pinning at scale: of the 30 users whose dropped topic had
 been pinned, 100% had that pin removed. Reuses the cohort personas + production
 primitives; deterministic/offline. 3 tests; write-up `docs/eval/drift.md`. 382 tests.
+
+## Step 44 — the push pipe: attention in, notification out (2026-07-21)
+
+Made both ends of Chief-as-attention-router first-class, without a new endpoint
+or a new external dependency. Inbound: `chief push "…" --topic … --urgency …`
+(and `… | chief push` for JSON) is the webhook as a one-liner — any skill,
+script, or cron job pushes attention and gets back the one-line verdict;
+`ingest.push.push_payload` is the minimal `{source, summary}` contract both it
+and the Telegram relay produce, feeding the same `brain.process` funnel
+(`push_to_daemon` → the running daemon, so pushes get persistence + delivery).
+Off-box reachability + outbound reuse the already-trusted Telegram channel:
+`poll_callbacks(process=…)` now turns a message *to* the bot into a candidate
+event (gated to the configured `chat_id` — a stranger's message is dropped
+before ingest, never processed) and replies with the decision, so the loop is
+phone → Chief → phone. §13's delivery-surface list is untouched (personal
+device, not a team channel; no ntfy/Pushover/cloud relay added). 11 new tests
+(push envelope/render/round-trip/dedup, Telegram inbound + chat-gating);
+docs in `docs/protocol.md §1b/§1c`. 393 tests.

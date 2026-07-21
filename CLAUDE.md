@@ -17,6 +17,7 @@ uv run pytest tests/test_routing.py -k name   # single test
 uv run chief eval   # regression (demo 24, must be 100%) + capability (golden 200)
 uv run chief trace <event_id>   # replay one decision chain with costs
 uv run chief lite '<event json>'  # zero-daemon judgment (skills use this)
+uv run chief push '<summary>' --topic t --urgency high  # push attention to the running daemon
 uv run chief ui                   # local web console at 127.0.0.1:8787/ui
 uv run chief connect composio --secret …   # + github / rss; chief sources
 uv run chief eval --learning      # preference-learning reward-loop eval

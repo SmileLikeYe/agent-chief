@@ -81,6 +81,33 @@ curl -X POST http://localhost:8787/v1/events \
 
 Errors: `401` bad token · `422` malformed event (fix your payload).
 
+## 1b. `chief push` — the webhook as a one-liner
+
+You don't have to hand-roll the HTTP call. Any local script, cron job, or skill
+can push attention in one line:
+
+```bash
+chief push "CI failed on main" --topic dev.ci --urgency high
+echo '{"source":"deployer","summary":"prod deploy finished"}' | chief push
+```
+
+`chief push` reaches the running daemon's `POST /v1/events` with the token from
+your config (so `chief run` must be up) and prints Chief's one-line verdict —
+`interrupt · deep_work · score 4.2 — production incident`. The minimal contract
+is just `summary`; `--source`, `--topic`, `--urgency`, `--detail`, `--action`
+are optional, and `--json` prints the full Decision. It is the inbound pipe: you
+push, Chief decides, you obey (usually by doing nothing). For a zero-daemon
+judgment with no persistence or delivery, use `chief lite` instead.
+
+## 1c. Telegram — push from your phone
+
+If you've wired a Telegram bot (`[delivery] telegram_token` + `chat_id`), it is
+a two-way pipe: Chief pushes worthy events *to* your phone, and any message you
+send *to* the bot becomes a candidate event — the off-box inbound path for
+sources that can't reach `127.0.0.1`. Messages are accepted **only** from the
+configured `chat_id` (a bot is reachable by anyone who finds it; a stranger's
+message is dropped, never ingested), and the bot replies with the decision.
+
 ## 2. MCP
 
 Chief exposes an MCP server (`python -m ingest.mcp_server`, stdio) with tools:
