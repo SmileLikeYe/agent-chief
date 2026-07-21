@@ -107,6 +107,9 @@ send *to* the bot becomes a candidate event — the off-box inbound path for
 sources that can't reach `127.0.0.1`. Messages are accepted **only** from the
 configured `chat_id` (a bot is reachable by anyone who finds it; a stranger's
 message is dropped, never ingested), and the bot replies with the decision.
+Long or multiline messages are summarized to one line for scoring with the full
+original preserved in `detail`; the polling loop survives network failures with
+capped backoff, so the pipe recovers on its own.
 
 ## 2. MCP
 

@@ -36,6 +36,22 @@ def test_push_payload_clamps_an_over_long_summary():
     assert len(p["summary"]) == 200  # would 422 against Event.summary otherwise
 
 
+def test_push_payload_collapses_a_multiline_summary_to_one_line():
+    # "one line a human could act on" — newlines/runs of spaces become one space
+    assert push_payload("CI failed\n   on  main")["summary"] == "CI failed on main"
+
+
+def test_push_payload_rejects_an_empty_summary_at_the_edge():
+    with pytest.raises(ValueError, match="empty"):
+        push_payload("   \n  ")
+
+
+def test_push_payload_rejects_an_unknown_urgency_at_the_edge():
+    # fail here with a human error, not as an opaque server 422
+    with pytest.raises(ValueError, match="low/medium/high"):
+        push_payload("x", claimed_urgency="urgent")
+
+
 # --- the one-line render ---
 
 

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 DEFAULT_SOURCE = "push"
 SUMMARY_MAX = 200  # mirrors Event.summary max_length; clamp before it 422s
+URGENCIES = ("low", "medium", "high")  # mirrors Event.claimed_urgency
 
 
 def push_payload(
@@ -45,10 +46,19 @@ def push_payload(
 
     Only `source` and `summary` are load-bearing; everything else is optional and
     dropped when absent so `normalize` can supply defaults (topic inference, id,
-    dedup_key). `summary` is clamped to the schema limit so a long push degrades
-    to a truncated event instead of a validation error.
+    dedup_key). The contract validates here — at the edge, before the network —
+    so every caller (CLI, Telegram relay) fails fast with a human error instead
+    of an opaque server 422: an empty summary and an unknown urgency both raise
+    `ValueError`. `summary` is collapsed to one line ("one line a human could act
+    on") and clamped to the schema limit so a long push degrades to a truncated
+    event, never a validation error.
     """
-    payload: dict = {"source": source, "summary": summary.strip()[:SUMMARY_MAX]}
+    line = " ".join(summary.split())[:SUMMARY_MAX]
+    if not line:
+        raise ValueError("summary is empty — push needs one line a human could act on")
+    if claimed_urgency is not None and claimed_urgency not in URGENCIES:
+        raise ValueError(f"claimed_urgency must be one of {'/'.join(URGENCIES)}")
+    payload: dict = {"source": source, "summary": line}
     if topic:
         payload["topic"] = topic
     if claimed_urgency:

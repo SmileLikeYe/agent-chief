@@ -195,3 +195,16 @@ phone → Chief → phone. §13's delivery-surface list is untouched (personal
 device, not a team channel; no ntfy/Pushover/cloud relay added). 11 new tests
 (push envelope/render/round-trip/dedup, Telegram inbound + chat-gating);
 docs in `docs/protocol.md §1b/§1c`. 393 tests.
+
+Hostile-review hardening (same day): the poll task now outlives the network
+(getUpdates failures back off 1s→60s instead of killing the daemon's only phone
+pipe), a poison update costs exactly itself (offset advances past the batch
+first; failures are logged and skipped), and the decision-echo reply is
+best-effort (a failed send never propagates past a persisted decision).
+Push-contract validation moved to the edge (`push_payload` raises on empty
+summary / unknown urgency with a human message, pre-network), summaries
+collapse to one line, and clamped/collapsed Telegram text keeps its full
+original in `detail` — clamping is rendering, never data loss. CLI failure
+modes are all explicit: non-object stdin JSON, unreachable daemon (any
+transport error, not just refused), and 401 with a `chief token` hint. 8 new
+tests pin every one of these. 401 tests.

@@ -145,6 +145,99 @@ async def test_inbound_empty_message_is_ignored():
     assert await ch.ingest_message({"chat": {"id": 42}, "text": "   "}, process=process) is None
 
 
+async def test_inbound_long_message_keeps_full_text_in_detail():
+    """Clamping is a rendering concern, never data loss: a 4096-char Telegram
+    message arrives with a one-line summary and the original intact in detail."""
+    seen = []
+
+    async def process(payload):
+        seen.append(payload)
+        return make_decision()
+
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=capture_transport([]))
+    long_text = "incident report: " + "x" * 400
+    await ch.ingest_message({"chat": {"id": 42}, "text": long_text}, process=process)
+    assert len(seen[0]["summary"]) == 200
+    assert seen[0]["detail"] == long_text
+
+
+async def test_inbound_multiline_message_summarizes_to_one_line():
+    seen = []
+
+    async def process(payload):
+        seen.append(payload)
+        return make_decision()
+
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=capture_transport([]))
+    await ch.ingest_message({"chat": {"id": 42}, "text": "CI failed\non main"}, process=process)
+    assert seen[0]["summary"] == "CI failed on main"
+    assert seen[0]["detail"] == "CI failed\non main"
+
+
+async def test_inbound_reply_failure_never_loses_the_decision():
+    """Once process() has decided (and persisted), a failed echo is logged and
+    swallowed — the reply is best-effort, the decision is not."""
+    ch = TelegramChannel(
+        token="TOK", chat_id="42",
+        transport=httpx.MockTransport(lambda request: httpx.Response(502)),
+    )
+
+    async def process(payload):
+        return make_decision()
+
+    decision = await ch.ingest_message({"chat": {"id": 42}, "text": "hi"}, process=process)
+    assert decision is not None and decision.route == "digest"
+
+
+async def test_a_poison_update_costs_itself_not_the_batch(tmp_path):
+    """One update whose handling explodes is skipped; the rest of the batch still
+    lands and the offset passes everything — no redelivery storm, no dead loop."""
+    batch = {
+        "ok": True,
+        "result": [
+            {"update_id": 7, "message": {"chat": {"id": 42}, "text": "boom"}},
+            {"update_id": 8, "message": {"chat": {"id": 42}, "text": "fine"}},
+        ],
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getUpdates"):
+            return httpx.Response(200, json=batch)
+        return httpx.Response(200, json={"ok": True, "result": {}})
+
+    seen = []
+
+    async def process(payload):
+        if payload["summary"] == "boom":
+            raise RuntimeError("judge exploded")
+        seen.append(payload["summary"])
+        return make_decision()
+
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=httpx.MockTransport(handler))
+    async with State.open(tmp_path / "s.db") as state:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            offset = await ch._poll_once(
+                client, 0, ["message"], state, tmp_path / "POLICY.md", process
+            )
+    assert offset == 9  # past BOTH updates — the poison one is never redelivered
+    assert seen == ["fine"]
+
+
+async def test_a_getupdates_failure_raises_for_the_backoff_loop(tmp_path):
+    """_poll_once lets transport errors propagate — poll_callbacks catches them
+    and retries with backoff instead of dying for the daemon's life."""
+    import pytest
+
+    ch = TelegramChannel(
+        token="TOK", chat_id="42",
+        transport=httpx.MockTransport(lambda request: httpx.Response(502)),
+    )
+    async with State.open(tmp_path / "s.db") as state:
+        async with httpx.AsyncClient(transport=ch._transport) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await ch._poll_once(client, 0, ["message"], state, tmp_path / "POLICY.md", None)
+
+
 def test_add_muted_topic_creates_and_appends(tmp_path):
     p = tmp_path / "POLICY.md"
     add_muted_topic(p, "a.b")

@@ -61,9 +61,9 @@ then it does exactly one of three things:
 | 🕶️ **Shadow mode** | For its first 7 days Chief never actually interrupts — it shows you what it *would* have done, and earns the right to ring. |
 | 📝 **Explainable, editable policy** | Everything it learns distills nightly into a human-readable `POLICY.md`. Your edits win, effective immediately. |
 | ✅ **Verified dispatch** | Agents report "done"; Chief checks. Acceptance command or LLM second opinion — fails closed. |
-| 🔌 **Protocol, not pipes** | One `POST /v1/events` (or MCP `propose`) connects anything in minutes. |
+| 🔌 **Protocol, not pipes** | One `POST /v1/events` (or MCP `propose`, or `chief push "…"` as a one-liner) connects anything in minutes. Message your Telegram bot and the verdict comes back to your phone. |
 | 🔒 **Local-first** | One SQLite file + markdown under `~/.chief`. No hosted service or telemetry; the local console stays on `127.0.0.1`. |
-| 🔬 **Evaluated, not asserted** | 341 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
+| 🔬 **Evaluated, not asserted** | 401 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
 
 ## ⚡ 60-second quickstart
 
@@ -200,7 +200,7 @@ run yourself — no keys, no network. Claims that can't be measured don't ship.
 | **Graceful degradation** | judge offline → rules-only conservative routing, never interrupts blind, auto-heals | chaos-injection tests |
 | **Prompt governance** | no prompt change merges without an eval diff on the golden set | `chief eval --compare v1 v2` |
 
-**374 tests, fully offline.** The demo routing table is a full-table
+**401 tests, fully offline.** The demo routing table is a full-table
 regression — every event's route is pinned, so a behavior change can never slip
 through silently.
 

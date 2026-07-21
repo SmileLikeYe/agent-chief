@@ -415,11 +415,18 @@ def push(
         except json.JSONDecodeError as exc:
             typer.echo(f"invalid event JSON on stdin: {exc}", err=True)
             raise typer.Exit(code=2) from None
+        if not isinstance(payload, dict):
+            typer.echo("event JSON must be an object, not a list or scalar", err=True)
+            raise typer.Exit(code=2)
     else:
-        payload = push_payload(
-            summary, source=source, topic=topic,
-            claimed_urgency=urgency, detail=detail, suggested_action=action,
-        )
+        try:
+            payload = push_payload(
+                summary, source=source, topic=topic,
+                claimed_urgency=urgency, detail=detail, suggested_action=action,
+            )
+        except ValueError as exc:  # empty summary / unknown urgency — fail at the edge
+            typer.echo(f"bad push: {exc}", err=True)
+            raise typer.Exit(code=2) from None
 
     ingest_cfg = load_config().get("ingest", {})
     token = ingest_cfg.get("webhook_token")
@@ -430,15 +437,17 @@ def push(
 
     try:
         decision = asyncio.run(push_to_daemon(payload, token=token, port=port))
-    except httpx.ConnectError:
+    except httpx.TransportError as exc:  # refused, timed out, DNS — all "can't reach"
         typer.echo(
-            f"can't reach chief on :{port} — is `chief run` up? "
+            f"can't reach chief on :{port} ({exc.__class__.__name__}) — is `chief run` up? "
             "(for a zero-daemon judgment use `chief lite`)",
             err=True,
         )
         raise typer.Exit(code=1) from None
     except httpx.HTTPStatusError as exc:
-        typer.echo(f"chief rejected the push: HTTP {exc.response.status_code}", err=True)
+        hint = " — token mismatch? compare with `chief token`" \
+            if exc.response.status_code == 401 else ""
+        typer.echo(f"chief rejected the push: HTTP {exc.response.status_code}{hint}", err=True)
         raise typer.Exit(code=1) from None
 
     typer.echo(decision.model_dump_json() if json_out else describe_decision(decision))
