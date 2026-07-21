@@ -293,5 +293,7 @@ async def _start_network(
         from delivery.telegram import TelegramChannel
 
         channel = TelegramChannel(token=token, chat_id=str(delivery_cfg["chat_id"]))
-        tasks.append(asyncio.ensure_future(channel.poll_callbacks(state, policy_path())))
+        tasks.append(asyncio.ensure_future(
+            channel.poll_callbacks(state, policy_path(), process=brain.process)
+        ))
     return tasks

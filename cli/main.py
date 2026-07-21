@@ -374,6 +374,77 @@ def token():
 
 
 @app.command()
+def push(
+    summary: str = typer.Argument(
+        None, help="What happened, one line. Omit to read a full event JSON from stdin."
+    ),
+    source: str = typer.Option("cli", "--source", "-s", help="Who is pushing."),
+    topic: str = typer.Option(None, "--topic", "-t", help="Left to inference if omitted."),
+    urgency: str = typer.Option(None, "--urgency", "-u", help="low | medium | high (advisory)."),
+    detail: str = typer.Option(None, "--detail", help="Longer context."),
+    action: str = typer.Option(None, "--action", help="What the user could do right now."),
+    json_out: bool = typer.Option(False, "--json", help="Print the full Decision as JSON."),
+):
+    """Push an attention event into the running Chief from anywhere (SPEC §4.1).
+
+    The inbound pipe as a one-liner — any skill, script, or cron job can hand
+    Chief something and get back its judgment:
+
+        chief push "CI failed on main" --topic dev.ci --urgency high
+        echo '{"source":"x","summary":"deploy done"}' | chief push
+
+    Reaches the local daemon's POST /v1/events with the token from config, so
+    `chief run` must be up. Chief decides; you obey (usually: it drops it).
+    """
+    import asyncio
+    import json
+    import sys
+
+    import httpx
+
+    from core.config import config_path, load_config
+    from ingest.push import describe_decision, push_payload, push_to_daemon
+
+    if summary is None:
+        raw = sys.stdin.read().strip()
+        if not raw:
+            typer.echo("nothing to push — give a summary or pipe event JSON on stdin", err=True)
+            raise typer.Exit(code=2)
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            typer.echo(f"invalid event JSON on stdin: {exc}", err=True)
+            raise typer.Exit(code=2) from None
+    else:
+        payload = push_payload(
+            summary, source=source, topic=topic,
+            claimed_urgency=urgency, detail=detail, suggested_action=action,
+        )
+
+    ingest_cfg = load_config().get("ingest", {})
+    token = ingest_cfg.get("webhook_token")
+    if not token:
+        typer.echo(f"no webhook token at {config_path()} — run: chief init", err=True)
+        raise typer.Exit(code=2)
+    port = int(ingest_cfg.get("webhook_port", 8787))
+
+    try:
+        decision = asyncio.run(push_to_daemon(payload, token=token, port=port))
+    except httpx.ConnectError:
+        typer.echo(
+            f"can't reach chief on :{port} — is `chief run` up? "
+            "(for a zero-daemon judgment use `chief lite`)",
+            err=True,
+        )
+        raise typer.Exit(code=1) from None
+    except httpx.HTTPStatusError as exc:
+        typer.echo(f"chief rejected the push: HTTP {exc.response.status_code}", err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo(decision.model_dump_json() if json_out else describe_decision(decision))
+
+
+@app.command()
 def run(
     once: bool = typer.Option(False, "--once", hidden=True, help="Assemble, verify, exit."),
 ):

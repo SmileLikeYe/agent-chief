@@ -88,6 +88,63 @@ async def test_malformed_callback_ignored(tmp_path):
         assert await state.feedback_rows() == []
 
 
+# --- inbound relay (Step 44): a message to the bot becomes a push event ---
+
+
+def make_decision(**kw):
+    from core.schema import Decision
+
+    base = dict(
+        event_id="evt_z", route="digest", score=1.2, scene="idle",
+        scene_confidence=0.4, cost=0.0, reason="scored low", stage=3,
+    )
+    base.update(kw)
+    return Decision(**base)
+
+
+async def test_inbound_message_becomes_a_push_event_and_gets_a_reply():
+    seen = []
+
+    async def process(payload):
+        seen.append(payload)
+        return make_decision()
+
+    calls = []
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=capture_transport(calls))
+    message = {"chat": {"id": 42}, "text": "flaky test on CI again"}
+    decision = await ch.ingest_message(message, process=process)
+
+    assert seen == [{"source": "telegram", "summary": "flaky test on CI again"}]
+    assert decision is not None
+    # a reply went back to the same chat, echoing the decision
+    path, body = calls[0]
+    assert path == "/botTOK/sendMessage" and body["chat_id"] == "42"
+    assert "digest" in body["text"] and "scored low" in body["text"]
+
+
+async def test_inbound_message_from_a_stranger_chat_is_dropped():
+    called = []
+
+    async def process(payload):
+        called.append(payload)
+        return make_decision()
+
+    calls = []
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=capture_transport(calls))
+    # a bot is reachable by anyone; a message from any other chat must not ingest
+    decision = await ch.ingest_message({"chat": {"id": 999}, "text": "inject"}, process=process)
+    assert decision is None
+    assert called == [] and calls == []
+
+
+async def test_inbound_empty_message_is_ignored():
+    async def process(payload):
+        raise AssertionError("should not be called for an empty message")
+
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=capture_transport([]))
+    assert await ch.ingest_message({"chat": {"id": 42}, "text": "   "}, process=process) is None
+
+
 def test_add_muted_topic_creates_and_appends(tmp_path):
     p = tmp_path / "POLICY.md"
     add_muted_topic(p, "a.b")
