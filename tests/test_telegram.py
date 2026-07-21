@@ -223,6 +223,49 @@ async def test_a_poison_update_costs_itself_not_the_batch(tmp_path):
     assert seen == ["fine"]
 
 
+async def test_shutdown_acks_handled_updates_so_restart_does_not_replay(tmp_path):
+    """Cancelling the poll task fires one last offset-only getUpdates, so
+    Telegram never redelivers an already-handled batch after a daemon restart
+    (duplicate feedback rows, re-ingested pushes, reply noise)."""
+    import asyncio
+
+    import pytest
+
+    requests: list[dict] = []
+    batch = {"ok": True, "result": [
+        {"update_id": 7, "message": {"chat": {"id": 42}, "text": "hello"}},
+    ]}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getUpdates"):
+            requests.append(json.loads(request.content))
+            if len(requests) == 1:
+                return httpx.Response(200, json=batch)
+            raise httpx.ConnectError("network gone")  # push the loop into backoff
+        return httpx.Response(200, json={"ok": True, "result": {}})
+
+    async def process(payload):
+        from tests.test_telegram import make_decision
+
+        return make_decision()
+
+    ch = TelegramChannel(token="TOK", chat_id="42", transport=httpx.MockTransport(handler))
+    async with State.open(tmp_path / "s.db") as state:
+        task = asyncio.ensure_future(
+            ch.poll_callbacks(state, tmp_path / "POLICY.md", process=process)
+        )
+        for _ in range(200):  # wait until the loop is parked in backoff sleep
+            if len(requests) >= 2:
+                break
+            await asyncio.sleep(0.01)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    ack = requests[-1]
+    assert ack["offset"] == 8 and ack["timeout"] == 0  # handled batch acknowledged
+
+
 async def test_a_getupdates_failure_raises_for_the_backoff_loop(tmp_path):
     """_poll_once lets transport errors propagate — poll_callbacks catches them
     and retries with backoff instead of dying for the daemon's life."""

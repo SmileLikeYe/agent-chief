@@ -4,11 +4,14 @@ Levels, weakest to strongest: terminal print < desktop notification <
 Telegram silent < vibrate < Telegram ring.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import Protocol
 
 from context.infer import SCENE_POLICY
+
+logger = logging.getLogger(__name__)
 
 LEVELS = ["terminal", "desktop", "silent", "vibrate", "ring"]
 
@@ -57,24 +60,49 @@ class Channel(Protocol):
     async def send(self, msg: DeliveryMessage, level: str) -> None: ...
 
 
-def pick_channel(level: str, channels: list[Channel]):
-    """Choose the weakest channel that can express `level`; if none can, the
-    strongest available; if none at all, a fresh terminal channel."""
+def channel_order(level: str, channels: list[Channel]) -> list[Channel]:
+    """Fallback order for a delivery: the weakest channel that can express
+    `level` first (the primary pick), then the remaining capable ones
+    weakest-first, then the incapable ones strongest-first (closest to the
+    requested loudness); a fresh terminal channel if there are none at all."""
     from delivery.terminal import TerminalChannel
 
     if not channels:
-        return TerminalChannel()
+        return [TerminalChannel()]
     capable = [c for c in channels if LEVELS.index(c.max_level) >= LEVELS.index(level)]
-    if capable:
-        return min(capable, key=lambda c: LEVELS.index(c.max_level))
-    return max(channels, key=lambda c: LEVELS.index(c.max_level))
+    incapable = [c for c in channels if c not in capable]
+    return (
+        sorted(capable, key=lambda c: LEVELS.index(c.max_level))
+        + sorted(incapable, key=lambda c: LEVELS.index(c.max_level), reverse=True)
+    )
+
+
+def pick_channel(level: str, channels: list[Channel]):
+    """The primary channel for `level` — head of the fallback order."""
+    return channel_order(level, channels)[0]
 
 
 async def deliver(
     msg: DeliveryMessage, requested: str, scene: str, channels: list[Channel]
 ) -> str:
-    """Cap by scene, pick a channel, send. Returns the level actually used."""
+    """Cap by scene, then walk the fallback chain until one channel lands.
+
+    A worthy event must reach the user *somewhere*: if the picked channel's
+    send fails (webhook receiver down, Telegram 5xx), the next channel in the
+    order gets it — degraded loudness beats a silent loss. Only when every
+    channel fails does the error propagate (brain._act_safely logs it).
+    Returns the level actually used.
+    """
     level = cap_level(requested, scene)
-    channel = pick_channel(level, channels)
-    await channel.send(msg, level)
-    return level
+    last_error: Exception | None = None
+    for channel in channel_order(level, channels):
+        try:
+            await channel.send(msg, level)
+        except Exception as exc:
+            last_error = exc
+            logger.warning("channel %s failed (%s); falling back", channel.name, exc)
+            continue
+        if last_error is not None:
+            logger.warning("delivered %s via fallback channel %s", msg.event_id, channel.name)
+        return level
+    raise last_error  # every channel failed — the loss must be loud in the log

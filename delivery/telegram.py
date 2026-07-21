@@ -5,6 +5,7 @@ this kind]) wired to the feedback table. Inbound: a message *to* the bot becomes
 a push event — the off-box half of the push pipe (Step 44)."""
 
 import asyncio
+import contextlib
 import dataclasses
 import logging
 from datetime import UTC, datetime
@@ -145,16 +146,32 @@ class TelegramChannel:
         delay = 1.0
         updates = ["callback_query"] + (["message"] if process else [])
         async with httpx.AsyncClient(transport=self._transport, timeout=None) as client:
-            while True:
-                try:
-                    offset = await self._poll_once(
-                        client, offset, updates, state, policy_path, process
-                    )
-                    delay = 1.0
-                except (httpx.HTTPError, ValueError) as exc:  # ValueError: non-JSON body
-                    logger.warning("telegram getUpdates failed (%s); retry in %.0fs", exc, delay)
-                    await asyncio.sleep(delay)
-                    delay = min(delay * 2, 60.0)
+            try:
+                while True:
+                    try:
+                        offset = await self._poll_once(
+                            client, offset, updates, state, policy_path, process
+                        )
+                        delay = 1.0
+                    except (httpx.HTTPError, ValueError) as exc:  # ValueError: non-JSON body
+                        logger.warning(
+                            "telegram getUpdates failed (%s); retry in %.0fs", exc, delay
+                        )
+                        await asyncio.sleep(delay)
+                        delay = min(delay * 2, 60.0)
+            except asyncio.CancelledError:
+                # Clean shutdown: acknowledge what we already handled, or Telegram
+                # redelivers the last batch on restart (duplicate feedback rows,
+                # re-ingested pushes, reply noise). Best-effort with a hard
+                # timeout — a dead network must never hang the daemon's exit.
+                if offset:
+                    with contextlib.suppress(Exception):
+                        await client.post(
+                            f"{self.api}/bot{self.token}/getUpdates",
+                            json={"offset": offset, "timeout": 0, "limit": 1},
+                            timeout=2.0,
+                        )
+                raise
 
 
 async def handle_callback(data: str, state: State, policy_path: str | Path) -> None:

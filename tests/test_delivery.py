@@ -96,3 +96,61 @@ def test_pick_channel_by_level():
 
 def test_pick_channel_empty_falls_back_to_terminal():
     assert isinstance(pick_channel("ring", []), TerminalChannel)
+
+
+# --- fallback chain (Step 45): a worthy event must land somewhere ---
+
+
+class FakeChannel:
+    def __init__(self, name, max_level, fail=False):
+        self.name = name
+        self.max_level = max_level
+        self.fail = fail
+        self.sent: list[str] = []
+
+    async def send(self, m, level):
+        if self.fail:
+            raise RuntimeError(f"{self.name} is down")
+        self.sent.append(level)
+
+
+def test_channel_order_is_primary_then_capable_then_loudest_incapable():
+    from delivery.base import channel_order
+
+    terminal = FakeChannel("terminal", "terminal")
+    desktop = FakeChannel("desktop", "desktop")
+    webhook = FakeChannel("webhook", "ring")
+    telegram = FakeChannel("telegram", "ring")
+
+    order = channel_order("ring", [terminal, desktop, telegram, webhook])
+    # capable weakest-first (tie → config order), then incapable strongest-first
+    assert [c.name for c in order] == ["telegram", "webhook", "desktop", "terminal"]
+
+
+async def test_deliver_falls_back_when_the_primary_channel_is_down():
+    from delivery.base import deliver
+
+    webhook = FakeChannel("webhook", "ring", fail=True)  # receiver is down
+    desktop = FakeChannel("desktop", "desktop")
+    level = await deliver(msg(), "ring", "idle", [desktop, webhook])
+    assert webhook.sent == []
+    assert desktop.sent == ["ring"]  # degraded loudness beats a silent loss
+    assert level == "ring"
+
+
+async def test_deliver_raises_only_when_every_channel_fails():
+    from delivery.base import deliver
+
+    a = FakeChannel("webhook", "ring", fail=True)
+    b = FakeChannel("desktop", "desktop", fail=True)
+    with pytest.raises(RuntimeError):
+        await deliver(msg(), "ring", "idle", [a, b])  # loss is loud, never silent
+
+
+async def test_deliver_unchanged_when_the_primary_succeeds():
+    from delivery.base import deliver
+
+    telegram = FakeChannel("telegram", "ring")
+    terminal = FakeChannel("terminal", "terminal")
+    await deliver(msg(), "ring", "idle", [terminal, telegram])
+    assert telegram.sent == ["ring"] and terminal.sent == []

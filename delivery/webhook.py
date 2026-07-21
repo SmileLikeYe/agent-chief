@@ -21,8 +21,9 @@ Signing happens only when a secret is configured — but configure one: an
 unsigned receiver can't tell Chief from anyone who found its URL.
 
 Delivery is retried (the actor task is already off the hot path), then raised —
-brain._act_safely logs it. An interrupt whose receiver is down is lost, not
-queued; that honest limitation is documented, not hidden.
+deliver() falls back to the next channel in the chain (degraded loudness beats
+a silent loss), and only if every channel fails does the loss surface in the
+log. There is still no outbound queue; that honest limit is documented.
 """
 
 import asyncio

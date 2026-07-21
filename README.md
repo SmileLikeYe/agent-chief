@@ -63,7 +63,7 @@ then it does exactly one of three things:
 | ✅ **Verified dispatch** | Agents report "done"; Chief checks. Acceptance command or LLM second opinion — fails closed. |
 | 🔌 **Protocol, not pipes** | In: one `POST /v1/events` (or MCP `propose`, or `chief push "…"`) connects anything in minutes — message your Telegram bot and the verdict comes back to your phone. Out: one signed webhook makes any HTTP receiver a delivery channel. |
 | 🔒 **Local-first** | One SQLite file + markdown under `~/.chief`. No hosted service or telemetry; the local console stays on `127.0.0.1`. |
-| 🔬 **Evaluated, not asserted** | 413 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
+| 🔬 **Evaluated, not asserted** | 418 offline tests, a 200-case golden set, a **100-user** learning benchmark, per-decision USD cost. Every claim below ships with a command that proves it. |
 
 ## ⚡ 60-second quickstart
 
@@ -200,7 +200,7 @@ run yourself — no keys, no network. Claims that can't be measured don't ship.
 | **Graceful degradation** | judge offline → rules-only conservative routing, never interrupts blind, auto-heals | chaos-injection tests |
 | **Prompt governance** | no prompt change merges without an eval diff on the golden set | `chief eval --compare v1 v2` |
 
-**413 tests, fully offline.** The demo routing table is a full-table
+**418 tests, fully offline.** The demo routing table is a full-table
 regression — every event's route is pinned, so a behavior change can never slip
 through silently.
 

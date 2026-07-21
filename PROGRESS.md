@@ -227,3 +227,13 @@ now teaches `chief push` (full pipeline) before `chief lite` (zero-daemon
 fallback). 12 new tests (contract shape, signature symmetry, unsigned warning,
 retry/raise, config wiring, connect CLI, skill ordering); receiver contract
 documented in `docs/protocol.md §4`. 413 tests.
+
+Reliability pass (same day): `deliver()` now walks a **fallback chain** instead
+of betting the event on one channel — if the picked channel's send fails
+(webhook receiver down, Telegram 5xx), the next channel gets it, and only an
+all-channels failure propagates: a worthy event lands *somewhere*, degraded
+loudness beats a silent loss. Inbound twin: cancelling the Telegram poll task
+fires one last offset-only ack (2s hard timeout) so a clean daemon shutdown
+never causes Telegram to replay the already-handled batch on restart. 5 new
+tests (chain order, fallback-on-failure, all-fail raises, primary-unchanged,
+shutdown ack). 418 tests.

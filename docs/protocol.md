@@ -215,8 +215,10 @@ anyone who found its URL — set one.
 
 - Chief picks **one** channel per delivery (the weakest that can express the
   level); the webhook competes with terminal/desktop/Telegram by `--max-level`.
-- Failures are retried 3× with backoff, then **logged and lost** — there is no
-  outbound queue. A receiver that must not miss events should be highly
-  available or you should keep a second channel configured.
+- If the picked channel fails, delivery **falls back down the chain**
+  (webhook down → Telegram → desktop → terminal): degraded loudness beats a
+  silent loss. The webhook itself is retried 3× with backoff first. Only when
+  *every* channel fails is the event logged and lost — there is no outbound
+  queue, so a receiver that must not miss events should be highly available.
 - Feedback flows back through the normal surface: your receiver can POST
   `/v1/feedback` with `{"event_id", "signal"}` (see §2b) to close the loop.
