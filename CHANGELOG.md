@@ -6,6 +6,41 @@ All notable changes to Chief are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-07-22
+
+### Added
+- **The outbound protocol** (SPEC §4.5, generalized): the exit is a protocol
+  too. `chief connect webhook --url https://your-receiver/hook --secret …`
+  turns **any HTTP receiver** — a phone-app bridge, an ntfy relay you host, a
+  desktop applet, a home-automation hub — into a delivery channel by
+  implementing one contract: a signed JSON POST of
+  `{event_id, topic, summary, plan, level, sent_at}`. No bespoke adapter per
+  app, and the §13 stance is unchanged (no team-chat adapters ship; this is
+  neutral egress to *your* receiver).
+  - The signature is byte-for-byte the svix scheme the Composio *inbound*
+    connector already verifies (`v1,` + base64 HMAC-SHA256 over
+    `"{event_id}.{timestamp}." + body`) — one verify function covers both
+    directions, and a test proves the round-trip. Unsigned mode works but
+    warns loudly: an unsigned receiver can't tell Chief from anyone who found
+    its URL.
+  - `--max-level` caps what Chief asks of the receiver; transient failures are
+    retried 3× with backoff before the channel is considered down.
+  - Docs: `docs/protocol.md` §4 (receiver contract + verify snippet + honest
+    semantics).
+
+### Fixed
+- **Delivery walks a fallback chain instead of betting on one channel**: if
+  the picked channel fails, `deliver()` tries the next
+  (webhook down → Telegram → desktop → terminal) — degraded loudness beats a
+  silent loss. Only when *every* channel fails does the loss surface in the
+  log. Previously a single receiver outage silently dropped the interrupt.
+  There is still no outbound queue; that limit is documented, not hidden.
+- **Clean shutdown acks the handled Telegram batch**: cancelling the poll task
+  fires one last offset-only `getUpdates` (2s hard timeout, never blocks
+  daemon exit), so a restart no longer replays already-handled updates —
+  no duplicate feedback rows, re-ingested pushes, or repeated bot replies.
+  A crash still replays; the 24h dedup absorbs it.
+
 ## [0.7.0] — 2026-07-21
 
 ### Added
@@ -248,6 +283,7 @@ Initial release: the full SPEC v3 implementation (Steps 1–24).
 - Fully offline deterministic demo (`uvx agent-chief demo`) with a
   full-table routing regression.
 
+[0.8.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/SmileLikeYe/agent-chief/compare/v0.4.0...v0.5.0
